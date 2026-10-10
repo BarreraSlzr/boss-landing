@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BOSS · Proyectos, Construcción y Supervisión | Soluciones industriales e hidrosanitarios</title>
+  <meta name="description" content="Supervisión técnica y administración de proyectos, redes, obra hidráulica, detección de fugas, fabricación y mantenimiento. Más de 30 años resolviendo proyectos industriales e hidrosanitarios en Guadalajara, Jalisco." />
+  <meta name="theme-color" content="#0a1830" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="BOSS · Proyectos, Construcción y Supervisión" />
+  <meta property="og:description" content="Vuela por nuestro mundo: 14 servicios industriales e hidrosanitarios en un solo recorrido. Más de 30 años de experiencia." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%230a1830'/%3E%3Cpath%20d='M18%2014h20a9%209%200%200%201%204%2016.8A10%2010%200%200%201%2038%2050H18Zm7%206v8h11a4%204%200%200%200%200-8Zm0%2014v9h12a4.5%204.5%200%200%200%200-9Z'%20fill='%233e8bff'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="loader" aria-hidden="true">
+    <div class="loader-mark">BOSS<span>.</span></div>
+    <div class="loader-bar"><span></span></div>
+    <div class="loader-tip">Construyendo el recorrido…</div>
+  </div>
+
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div id="progress" aria-hidden="true"></div>
+
+  <header id="nav">
+    <a class="brand" href="#" data-goto="0" aria-label="BOSS — inicio">
+      <b>BOSS<span>.</span></b>
+      <small>INGENIERÍA HIDROSANITARIA</small>
+    </a>
+    <nav class="nav-links" aria-label="Navegación principal">
+      <a href="#" data-goto="1">Servicios</a>
+      <a href="#" data-goto="15">Contacto</a>
+      <a class="chip" id="nav-wa" href="#" rel="noopener" target="_blank">WhatsApp</a>
+    </nav>
+  </header>
+
+  <nav id="rail" aria-label="Estaciones del recorrido"></nav>
+
+  <main id="story">
+    <div id="sections"></div>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
