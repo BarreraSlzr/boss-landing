@@ -258,28 +258,34 @@ sections.forEach((sec, idx) => {
   railButtons.push(b)
 })
 
-// dock inferior: escenarios 01–14 + Detener (navegación móvil)
+// dock inferior: prev/next entre escenarios + Detener (móvil)
+const SCENE_FIRST = 1
+const SCENE_LAST = TOPICS.length // 14 — antes de contacto
 const sceneDock = document.createElement('div')
 sceneDock.id = 'scene-dock'
 const sceneNav = document.createElement('nav')
 sceneNav.id = 'scene-nav'
 sceneNav.setAttribute('aria-label', 'Escenarios')
-const sceneButtons = []
-TOPICS.forEach((tp, i) => {
-  const idx = i + 1
-  const b = document.createElement('button')
-  b.type = 'button'
-  b.textContent = tp.id
-  b.title = tp.title
-  b.setAttribute('aria-label', `Escenario ${tp.id}`)
-  b.addEventListener('click', () => {
-    cancelTour()
-    if (Math.abs(idx - activeIdx) > 1) flyTo(idx)
-    else gotoSection(idx)
-  })
-  sceneNav.appendChild(b)
-  sceneButtons.push(b)
-})
+const scenePrev = document.createElement('button')
+scenePrev.type = 'button'
+scenePrev.id = 'scene-prev'
+scenePrev.setAttribute('aria-label', 'Escenario anterior')
+scenePrev.textContent = '← Anterior'
+const sceneNext = document.createElement('button')
+sceneNext.type = 'button'
+sceneNext.id = 'scene-next'
+sceneNext.setAttribute('aria-label', 'Escenario siguiente')
+sceneNext.textContent = 'Siguiente →'
+const jumpScene = (dir) => {
+  const target = Math.min(SCENE_LAST, Math.max(SCENE_FIRST, activeIdx + dir))
+  if (target === activeIdx) return
+  cancelTour()
+  if (Math.abs(target - activeIdx) > 1) flyTo(target)
+  else gotoSection(target)
+}
+scenePrev.addEventListener('click', () => jumpScene(-1))
+sceneNext.addEventListener('click', () => jumpScene(1))
+sceneNav.append(scenePrev, sceneNext)
 sceneDock.appendChild(sceneNav)
 document.body.appendChild(sceneDock)
 
@@ -385,13 +391,10 @@ function sectionH() {
   return sections[0].offsetHeight || innerHeight
 }
 function syncSceneDock(idx) {
-  sceneButtons.forEach((b, i) => {
-    const on = i + 1 === idx
-    b.classList.toggle('active', on)
-    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
-  })
-  // visible en escenarios 01–14 (antes de contacto); Detener sigue vía body.touring
-  sceneDock.classList.toggle('is-visible', idx >= 1 && idx <= 14)
+  const inScenes = idx >= SCENE_FIRST && idx <= SCENE_LAST
+  sceneDock.classList.toggle('is-visible', inScenes)
+  scenePrev.hidden = !inScenes || idx <= SCENE_FIRST
+  sceneNext.hidden = !inScenes || idx >= SCENE_LAST
 }
 
 function updateActive() {
