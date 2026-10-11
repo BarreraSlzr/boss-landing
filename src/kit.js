@@ -12,16 +12,16 @@ export const HAS_DOM = typeof document !== 'undefined'
 // ---------- paleta ----------
 export const PAL = {
   fog: 0x0a1830,
-  ground: 0x0e2036,       // mesa de plano: azul profundo
-  groundLine: 0x1c3a5e,
-  pad: 0x132844,          // plinth de estación
-  padEdge: 0x3a6ea8,
-  slab: 0x1c3a5e,         // placa técnica
-  slabDark: 0x152f4e,
+  ground: 0x0a1830,       // mesa = --bg de la página
+  groundLine: 0x1e3a5e,
+  pad: 0x0d2140,          // plinth = --bg-top (misma mesa)
+  padEdge: 0x3e8bff,      // arista = --accent
+  slab: 0x0d2140,         // placa técnica = misma familia
+  slabDark: 0x0a1830,
   concrete: 0x7f9cc0,     // concreto = gris azulado de plano
   concreteDark: 0x5d7ba0,
-  soil: [0x24466b, 0x1d3a5c, 0x16304f, 0x0f2740], // estratos de sección (azules)
-  soilLine: 0x6fa8ff,     // línea de sección: azul luminoso
+  soil: [0x1a3558, 0x142c4a, 0x0d2140, 0x0a1830], // estratos alineados al blueprint
+  soilLine: 0x3e8bff,     // línea de sección = --accent
   white: 0xdce9fa,        // maquinaria: hielo azulado
   white2: 0xc3d8ef,
   metal: 0x8aa5c5,        // gris metálico azulado
@@ -95,12 +95,15 @@ export const M = {
 // material de piso con retícula de plano (la textura ya trae los colores)
 export function gridGroundMat(o = {}) {
   const t = texGrid()
-  const m = mat(t ? 0xffffff : PAL.ground, { r: 0.95, op: o.op ?? 1 })
+  // roughness alta: lee como mesa de blueprint, no como plástico iluminado
+  const m = mat(t ? 0xffffff : PAL.ground, { r: 1, m: 0, op: o.op ?? 1 })
   if (t) {
     m.map = t.clone()
+    m.map.colorSpace = THREE.SRGBColorSpace
     m.map.needsUpdate = true
     m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping
     m.map.repeat.set(o.rx ?? 30, o.rz ?? 110)
+    m.map.anisotropy = 8
     m.needsUpdate = true
   }
   return m
@@ -164,10 +167,10 @@ export function tube(parent, pts, r, m, o = {}) {
   return mesh
 }
 
-// líneas de arista — precisión vectorial
+// líneas de arista — precisión vectorial (suaves: planas, no jaula)
 export function edgeBox(parent, w, h, d, color, x = 0, y = 0, z = 0, ry = 0) {
   const g = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d), 20)
-  const line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 }))
+  const line = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.38 }))
   line.position.set(x, y, z)
   line.rotation.y = ry
   parent.add(line)
@@ -205,50 +208,66 @@ const MONO = '"IBM Plex Mono", monospace'
 
 // ventanas de plano: PINTADAS, no modeladas
 export const texWindows = () => canvasTex(512, 256, (c, w, h) => {
-  c.fillStyle = '#0d1f38'
+  c.fillStyle = '#0a1830'
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(99,198,255,0.85)'
-  c.lineWidth = 4
-  c.strokeRect(6, 6, w - 12, h - 12)
+  c.strokeStyle = 'rgba(62,139,255,0.45)'
   c.lineWidth = 2
+  c.strokeRect(6, 6, w - 12, h - 12)
+  c.strokeStyle = 'rgba(62,139,255,0.22)'
+  c.lineWidth = 1
   for (let i = 1; i < 8; i++) {
-    const p = (i / 8) * w
+    const p = (i / 8) * w + 0.5
     c.beginPath(); c.moveTo(p, 8); c.lineTo(p, h - 8); c.stroke()
   }
   for (let j = 1; j < 2; j++) {
-    const p = (j / 2) * h
+    const p = (j / 2) * h + 0.5
     c.beginPath(); c.moveTo(8, p); c.lineTo(w - 8, p); c.stroke()
   }
-  // algunos paños iluminados
-  c.fillStyle = 'rgba(99,198,255,0.16)'
+  c.fillStyle = 'rgba(62,139,255,0.12)'
   for (const [x, y] of [[1, 0], [4, 1], [6, 0], [2, 1]]) c.fillRect((x * w) / 8 + 4, (y * h) / 2 + 4, w / 8 - 8, h / 2 - 8)
 })
 
-// rayado técnico de sección (hatching clásico de plano)
-export const texHatch = (bg = '#24466b') => canvasTex(256, 256, (c, w, h) => {
+// rayado técnico de sección (misma tinta que la retícula del body)
+export const texHatch = (bg = '#0d2140') => canvasTex(256, 256, (c, w, h) => {
   c.fillStyle = bg
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(111,168,255,0.30)'
-  c.lineWidth = 2
-  for (let i = -h; i < w; i += 22) {
+  c.strokeStyle = 'rgba(62,139,255,0.14)'
+  c.lineWidth = 1.25
+  for (let i = -h; i < w; i += 24) {
     c.beginPath(); c.moveTo(i, 0); c.lineTo(i + h, h); c.stroke()
   }
 })
 
-// retícula de mesa de digitalizado
+// retícula de mesa = misma lengua que el body CSS (--bg + grid 48px)
 export const texGrid = () => canvasTex(512, 512, (c, w, h) => {
-  c.fillStyle = '#0e2036'
+  c.fillStyle = '#0a1830'
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(90,140,200,0.5)'
+  // velo suave (sin romper el tile)
+  const wash = c.createLinearGradient(0, 0, w, h)
+  wash.addColorStop(0, 'rgba(13,33,64,0.55)')
+  wash.addColorStop(0.45, 'rgba(10,24,48,0)')
+  wash.addColorStop(1, 'rgba(6,16,31,0.45)')
+  c.fillStyle = wash
+  c.fillRect(0, 0, w, h)
+
+  const cells = 8
+  const step = w / cells
+  // líneas finas — como repeating-linear-gradient del body
+  c.strokeStyle = 'rgba(62,139,255,0.1)'
   c.lineWidth = 1
-  for (let i = 1; i < 8; i++) {
-    const p = (i / 8) * w
+  for (let i = 0; i < cells; i++) {
+    const p = i * step + 0.5
     c.beginPath(); c.moveTo(p, 0); c.lineTo(p, h); c.stroke()
     c.beginPath(); c.moveTo(0, p); c.lineTo(w, p); c.stroke()
   }
-  c.strokeStyle = 'rgba(140,190,255,0.8)'
-  c.lineWidth = 2
-  c.strokeRect(0, 0, w, h)
+  // mayores cada 4 celdas (sin strokeRect en el borde: evita doble costura al tilear)
+  c.strokeStyle = 'rgba(62,139,255,0.2)'
+  c.lineWidth = 1.25
+  for (let i = 0; i < 2; i++) {
+    const p = i * (w / 2) + 0.5
+    c.beginPath(); c.moveTo(p, 0); c.lineTo(p, h); c.stroke()
+    c.beginPath(); c.moveTo(0, p); c.lineTo(w, p); c.stroke()
+  }
 })
 
 export const texShadow = () => canvasTex(128, 128, (c, w, h) => {
@@ -292,49 +311,57 @@ export const texSign = (t = 'BOSS') => canvasTex(1024, 280, (c, w, h) => {
 })
 
 export const texBlueprint = () => canvasTex(512, 512, (c, w, h) => {
-  c.fillStyle = '#0c1c34'
+  // holograma de plano: misma mesa + linework fino (sin neon grueso)
+  c.fillStyle = '#0a1830'
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(99,198,255,0.18)'
+  c.strokeStyle = 'rgba(62,139,255,0.1)'
   c.lineWidth = 1
   for (let i = 0; i <= 16; i++) {
-    const p = (i / 16) * w
+    const p = (i / 16) * w + 0.5
     c.beginPath(); c.moveTo(p, 0); c.lineTo(p, h); c.stroke()
     c.beginPath(); c.moveTo(0, p); c.lineTo(w, p); c.stroke()
   }
-  c.strokeStyle = '#63c6ff'
-  c.lineWidth = 4
-  c.strokeRect(48, 48, w - 96, h - 96)
-  c.lineWidth = 3
-  c.beginPath(); c.arc(180, 180, 62, 0, Math.PI * 2); c.stroke()
-  c.beginPath(); c.arc(350, 210, 40, 0, Math.PI * 2); c.stroke()
-  c.beginPath(); c.moveTo(242, 180); c.lineTo(310, 210); c.stroke()
-  c.strokeRect(120, 300, 150, 100)
-  c.strokeRect(320, 320, 90, 120)
-  c.beginPath(); c.moveTo(48, 400); c.bezierCurveTo(160, 380, 260, 440, 440, 400); c.stroke()
+  c.strokeStyle = 'rgba(62,139,255,0.55)'
+  c.lineWidth = 1.5
+  c.strokeRect(56, 56, w - 112, h - 112)
+  c.strokeStyle = 'rgba(99,198,255,0.5)'
+  c.lineWidth = 1.25
+  c.beginPath(); c.arc(180, 180, 58, 0, Math.PI * 2); c.stroke()
+  c.beginPath(); c.arc(340, 210, 36, 0, Math.PI * 2); c.stroke()
+  c.beginPath(); c.moveTo(238, 180); c.lineTo(304, 210); c.stroke()
+  c.strokeRect(120, 300, 140, 90)
+  c.strokeRect(320, 320, 84, 110)
+  c.beginPath(); c.moveTo(56, 400); c.bezierCurveTo(160, 380, 260, 440, 440, 400); c.stroke()
   c.fillStyle = '#3e8bff'
-  for (const [x, y] of [[120, 300], [270, 300], [320, 320], [410, 320]]) c.fillRect(x - 4, y - 4, 8, 8)
-  c.font = `500 22px ${MONO}`
-  c.fillText('PLANTA BAJA · RED HIDRÁULICA', 60, 100)
+  for (const [x, y] of [[120, 300], [260, 300], [320, 320], [404, 320]]) {
+    c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill()
+  }
+  c.fillStyle = 'rgba(233,242,252,0.72)'
+  c.font = `500 18px ${MONO}`
+  c.fillText('PLANTA BAJA · RED HIDRÁULICA', 68, 88)
 })
 
 export const texGantt = () => canvasTex(512, 320, (c, w, h) => {
-  c.fillStyle = '#0c1c34'
+  c.fillStyle = '#0a1830'
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(99,198,255,0.15)'
+  c.strokeStyle = 'rgba(62,139,255,0.1)'
+  c.lineWidth = 1
   for (let i = 0; i <= 10; i++) {
-    const p = (i / 10) * w
+    const p = (i / 10) * w + 0.5
     c.beginPath(); c.moveTo(p, 0); c.lineTo(p, h); c.stroke()
   }
-  const bars = [[30, 150, 26], [70, 260, 54], [200, 330, 26], [260, 200, 54], [330, 120, 98], [120, 300, 170], [300, 470, 142], [240, 130, 26]]
+  for (let i = 1; i < 6; i++) {
+    const p = (i / 6) * h + 0.5
+    c.beginPath(); c.moveTo(0, p); c.lineTo(w, p); c.stroke()
+  }
+  const bars = [[48, 140, 28], [78, 220, 56], [118, 160, 40], [158, 200, 72], [198, 120, 100], [238, 180, 48]]
   bars.forEach(([y, w2, x], k) => {
-    c.fillStyle = k % 3 === 0 ? '#3e8bff' : (k % 3 === 1 ? '#63c6ff' : '#5d7ba0')
-    c.globalAlpha = 0.9
-    c.fillRect(x, y, w2, 16)
-    c.globalAlpha = 1
+    c.fillStyle = k % 2 === 0 ? 'rgba(62,139,255,0.75)' : 'rgba(99,198,255,0.45)'
+    c.fillRect(x, y, w2, 12)
   })
-  c.fillStyle = '#e9f2fc'
-  c.font = `500 18px ${MONO}`
-  c.fillText('PROGRAMA DE OBRA', 22, 26)
+  c.fillStyle = 'rgba(233,242,252,0.78)'
+  c.font = `500 16px ${MONO}`
+  c.fillText('PROGRAMA DE OBRA', 22, 24)
 })
 
 export const texWave = () => canvasTex(512, 256, (c, w, h) => {
@@ -623,12 +650,20 @@ export function person(parent, x, z, o = {}) {
   return sp
 }
 
-// cono de señalización (hielo con banda azul BOSS)
+// cono de señalización (base + cuerpo + bandas reflectantes)
 export function cone(parent, x, z, s = 1) {
   const g = new THREE.Group()
   g.position.set(x, 0.22, z)
-  cyl(g, 0.02 * s, 0.2 * s, 0.5 * s, M.white(), 0, 0.25 * s, 0)
-  tor(g, 0.13 * s, 0.03 * s, M.red(), 0, 0.3 * s, 0, { rx: Math.PI / 2 })
+  // base cuadrada antideslizante
+  box(g, 0.42 * s, 0.05 * s, 0.42 * s, M.dark(), 0, 0.025 * s, 0)
+  box(g, 0.34 * s, 0.03 * s, 0.34 * s, M.white2(), 0, 0.055 * s, 0)
+  // cuerpo cónico
+  cyl(g, 0.035 * s, 0.18 * s, 0.58 * s, M.white(), 0, 0.36 * s, 0, { seg: 14 })
+  // bandas BOSS
+  tor(g, 0.14 * s, 0.028 * s, M.red(), 0, 0.22 * s, 0, { rx: Math.PI / 2 })
+  tor(g, 0.095 * s, 0.022 * s, M.red(), 0, 0.42 * s, 0, { rx: Math.PI / 2 })
+  // tope / ojillo
+  cyl(g, 0.04 * s, 0.04 * s, 0.06 * s, M.dark(), 0, 0.68 * s, 0)
   parent.add(g)
   return g
 }
@@ -761,7 +796,12 @@ export function flaggingTape(parent, x, z, len = 6, ry = 0) {
   g.name = 'tape'
   g.position.set(x, 0.22, z)
   g.rotation.y = ry
-  for (const s of [-1, 1]) cyl(g, 0.035, 0.035, 1.15, M.metal(), s * len / 2, 0.58, 0)
+  for (const s of [-1, 1]) {
+    box(g, 0.12, 0.06, 0.12, M.dark(), s * len / 2, 0.03, 0)
+    cyl(g, 0.04, 0.04, 1.2, M.metal(), s * len / 2, 0.62, 0)
+    // tope del poste
+    cyl(g, 0.06, 0.06, 0.06, M.red(), s * len / 2, 1.24, 0)
+  }
   const t = canvasTex(256, 32, (c, w, h) => {
     c.fillStyle = '#d9a742'; c.fillRect(0, 0, w, h)
     c.fillStyle = '#1a1206'
@@ -778,15 +818,26 @@ export function flaggingTape(parent, x, z, len = 6, ry = 0) {
   return g
 }
 
-// extintor con soporte
+// extintor con soporte, manguera y manómetro
 export function extinguisher(parent, x, z, ry = 0) {
   const g = new THREE.Group()
   g.position.set(x, 0.22, z)
   g.rotation.y = ry
-  cyl(g, 0.17, 0.17, 0.72, M.red(), 0, 0.36, 0)
-  cyl(g, 0.09, 0.05, 0.16, M.metal(), 0, 0.82, 0)
-  box(g, 0.36, 0.07, 0.36, M.dark(), 0, 0.03, 0)
-  cyl(g, 0.04, 0.04, 0.34, M.dark(), 0.2, 0.62, 0, { rz: 0.4 })
+  // soporte mural
+  box(g, 0.42, 0.08, 0.22, M.dark(), 0, 0.04, -0.02)
+  box(g, 0.08, 0.9, 0.06, M.metal(), 0, 0.5, -0.14)
+  cyl(g, 0.17, 0.17, 0.78, M.red(), 0, 0.42, 0)
+  // banda de identificación
+  box(g, 0.36, 0.12, 0.02, M.white2(), 0, 0.5, 0.175)
+  // cuello + manija
+  cyl(g, 0.1, 0.06, 0.14, M.metal(), 0, 0.88, 0)
+  box(g, 0.22, 0.05, 0.08, M.dark(), 0.08, 0.98, 0)
+  // manguera + boquilla
+  tube(g, [V(0.12, 0.82, 0.05), V(0.28, 0.55, 0.12), V(0.22, 0.32, 0.08)], 0.035, M.dark())
+  cyl(g, 0.05, 0.03, 0.12, M.metal(), 0.22, 0.28, 0.08, { rz: 0.5 })
+  // manómetro stub
+  cyl(g, 0.04, 0.04, 0.08, M.metal(), -0.14, 0.78, 0.08, { rz: Math.PI / 2 })
+  sph(g, 0.055, M.white2(), -0.2, 0.78, 0.08, { sy: 0.55 })
   parent.add(g)
   return g
 }
@@ -796,13 +847,21 @@ export function hoseCabinet(parent, x, z, ry = 0) {
   const g = new THREE.Group()
   g.position.set(x, 0.22, z)
   g.rotation.y = ry
-  const caras = M.white2()
-  box(g, 1.35, 1.5, 0.42, caras, 0, 0.78, 0)
-  plate(g, 1.1, 1.05, M.glass(), 0, 0.82, 0.23)
-  box(g, 0.09, 0.24, 0.05, M.metal(), 0.48, 0.8, 0.24)
-  tor(g, 0.34, 0.13, M.red(), 0, 0.72, 0.02, { ry: Math.PI / 2, rad: 10, tub: 18 })
-  box(g, 1.45, 0.12, 0.5, M.red(), 0, 0.06, 0)
-  box(g, 0.8, 0.26, 0.03, M.red(), 0, 1.62, 0.22)
+  box(g, 1.45, 1.65, 0.48, M.white2(), 0, 0.85, 0)
+  edgeBox(g, 1.45, 1.65, 0.48, PAL.metalDark, 0, 0.85, 0)
+  // marco interior + cristal
+  box(g, 1.2, 1.25, 0.04, M.dark(), 0, 0.88, 0.2)
+  plate(g, 1.05, 1.1, M.glass(), 0, 0.88, 0.24)
+  box(g, 0.1, 0.28, 0.06, M.metal(), 0.52, 0.88, 0.26)
+  // carrete + manguera
+  cyl(g, 0.08, 0.08, 0.35, M.metal(), 0, 0.85, 0.02, { rx: Math.PI / 2 })
+  tor(g, 0.36, 0.12, M.red(), 0, 0.85, 0.05, { ry: Math.PI / 2, rad: 10, tub: 18 })
+  // lanza en cuna
+  cyl(g, 0.05, 0.05, 0.55, M.metal(), 0.35, 0.45, 0.12, { rz: 0.9 })
+  box(g, 1.55, 0.12, 0.55, M.red(), 0, 0.06, 0)
+  box(g, 0.9, 0.22, 0.04, M.red(), 0, 1.72, 0.22)
+  // rótulo "FIRE"
+  box(g, 0.55, 0.12, 0.03, M.white(), 0, 1.48, 0.26)
   parent.add(g)
   return g
 }
@@ -813,18 +872,88 @@ export function sprinkler(parent, x, y, z, ry = 0) {
   g.position.set(x, y, z)
   g.rotation.y = ry
   cyl(g, 0.05, 0.05, 1.15, M.red(), 0, -0.58, 0)
-  cyl(g, 0.1, 0.1, 0.2, M.metal(), 0, -0.1, 0)
-  tor(g, 0.13, 0.03, M.blue(), 0, -0.22, 0, { rx: Math.PI / 2 })
+  cyl(g, 0.09, 0.09, 0.14, M.metal(), 0, -0.05, 0)
+  // brazos del frame
+  for (const s of [-1, 1]) {
+    const arm = box(g, 0.04, 0.22, 0.04, M.metal(), s * 0.1, -0.2, 0)
+    arm.rotation.z = s * 0.35
+  }
+  // deflector
+  cyl(g, 0.16, 0.16, 0.03, M.metal(), 0, -0.32, 0)
+  tor(g, 0.14, 0.02, M.blue(), 0, -0.28, 0, { rx: Math.PI / 2 })
   parent.add(g)
   return g
 }
 
-// base de estación (plinth con arista vectorial)
+// base de estación (plinth con bordillo, juntas y drenaje)
 export function padStation(parent, w = 28, d = 20) {
   const y0 = 0.22
-  box(parent, w, y0, d, M.slab(), 0, y0 / 2, 0)
+  box(parent, w, y0, d, mat(PAL.pad, { r: 1, m: 0 }), 0, y0 / 2, 0)
   edgeBox(parent, w, y0, d, PAL.padEdge, 0, y0 / 2, 0)
+  // bordillo perimetral
+  const bw = 0.22, bh = 0.08
+  box(parent, w, bh, bw, M.concreteDark(), 0, y0 + bh / 2, d / 2 - bw / 2)
+  box(parent, w, bh, bw, M.concreteDark(), 0, y0 + bh / 2, -d / 2 + bw / 2)
+  box(parent, bw, bh, d - bw * 2, M.concreteDark(), w / 2 - bw / 2, y0 + bh / 2, 0)
+  box(parent, bw, bh, d - bw * 2, M.concreteDark(), -w / 2 + bw / 2, y0 + bh / 2, 0)
+  // juntas de expansión
+  for (let i = -1; i <= 1; i += 2) {
+    box(parent, 0.04, 0.02, d * 0.7, mat(PAL.padEdge, { r: 1, op: 0.35 }), i * w * 0.22, y0 + 0.01, 0)
+  }
+  box(parent, w * 0.7, 0.02, 0.04, mat(PAL.padEdge, { r: 1, op: 0.35 }), 0, y0 + 0.01, 0)
+  // ranura de drenaje
+  box(parent, w * 0.35, 0.03, 0.28, M.dark(), w * 0.28, y0 + 0.02, d * 0.35)
+  for (let i = 0; i < 5; i++) box(parent, 0.04, 0.02, 0.26, M.metal(), w * 0.28 - 0.12 + i * 0.06, y0 + 0.035, d * 0.35)
   return y0
+}
+
+/** brida con círculo de pernos — agujero local +Z; usar rx/ry/rz para alinear al tubo */
+export function flange(parent, x, y, z, o = {}) {
+  const r = o.r ?? 0.35
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  if (o.rx) g.rotation.x = o.rx
+  if (o.ry) g.rotation.y = o.ry
+  if (o.rz) g.rotation.z = o.rz
+  // torus en XY (agujero +Z)
+  tor(g, r, o.t ?? 0.055, o.m ?? M.redDeep(), 0, 0, 0)
+  const n = o.bolts ?? 6
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2
+    box(g, 0.055, 0.055, 0.1, M.metal(), Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, 0)
+  }
+  parent.add(g)
+  return g
+}
+
+/** skid de bomba (motor + acoplamiento + voluta + bridas) */
+export function pumpSkid(parent, x, y, z, o = {}) {
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  const s = o.side ?? 1
+  box(g, 3.8, 0.14, 2.2, M.concrete(), 0, 0.07, 0)
+  edgeBox(g, 3.8, 0.14, 2.2, PAL.padEdge, 0, 0.07, 0)
+  box(g, 3.5, 0.18, 1.9, M.steel(), 0, 0.22, 0)
+  for (const fz of [-0.7, 0.7]) box(g, 3.5, 0.12, 0.12, M.dark(), 0, 0.35, fz)
+  // motor con aletas
+  cyl(g, 0.48, 0.48, 1.55, M.white(), -s * 0.75, 0.95, 0, { rz: Math.PI / 2 })
+  for (let i = 0; i < 6; i++) box(g, 0.04, 0.65, 0.9, M.white2(), -s * 1.4, 0.95, -0.4 + i * 0.16)
+  box(g, 0.38, 0.32, 0.28, M.dark(), -s * 0.75, 1.4, 0.55)
+  // acoplamiento + guard
+  cyl(g, 0.2, 0.2, 0.38, M.dark(), -s * 0.05, 0.95, 0, { rz: Math.PI / 2 })
+  plate(g, 0.5, 0.35, M.metal(), -s * 0.05, 1.2, 0.35, { d: 0.04 })
+  // voluta + pies
+  sph(g, 0.55, M.red(), s * 0.85, 0.95, 0, { sy: 0.88 })
+  for (const fz of [-0.5, 0.5]) box(g, 0.4, 0.22, 0.28, M.metal(), s * 0.85, 0.4, fz)
+  // descarga vertical + brida
+  cyl(g, 0.2, 0.2, 1.5, M.red(), s * 0.85, 1.9, 0)
+  flange(g, s * 0.85, 2.7, 0, { r: 0.28, rx: Math.PI / 2, bolts: 6 })
+  // succión
+  cyl(g, 0.22, 0.22, 1.1, M.red(), s * 0.85, 0.55, 0.85, { rx: Math.PI / 2 })
+  flange(g, s * 0.85, 0.55, 1.4, { r: 0.3, bolts: 6 })
+  parent.add(g)
+  return g
 }
 
 // bloque de suelo en corte (con estratos)
@@ -836,32 +965,63 @@ export function soilBlock(parent, w, h, d, x, y, z, o = {}) {
   edgeBox(parent, w, h, d, o.line ?? PAL.soilLine, x, y - h / 2, z)
 }
 
-// cabina / caseta blanca
+// cabina / caseta de obra (cimiento, puerta, AC, escalón)
 export function cabin(parent, spec = {}) {
   const { w = 4, h = 2.6, d = 2.6, x = 0, y = 0.22, z = 0, ry = 0, winRows = 2, red = true } = spec
   const g = new THREE.Group()
   g.position.set(x, y, z)
   g.rotation.y = ry
-  rbox(g, w, h, d, 0.12, M.white(), 0, h / 2, 0)
-  plate(g, w * 0.86, 0.06, M.dark(), 0, h * 0.78, d / 2 + 0.01)                       // banda clerestorio
+  // cimiento / zapata
+  box(g, w + 0.35, 0.14, d + 0.35, M.concrete(), 0, 0.07, 0)
+  edgeBox(g, w + 0.35, 0.14, d + 0.35, PAL.padEdge, 0, 0.07, 0)
+  rbox(g, w, h, d, 0.12, M.white(), 0, h / 2 + 0.14, 0)
+  edgeBox(g, w, h, d, PAL.metalDark, 0, h / 2 + 0.14, 0)
+  const bodyY = 0.14
+  // clerestorio + ventanas
+  plate(g, w * 0.86, 0.06, M.dark(), 0, bodyY + h * 0.78, d / 2 + 0.01)
   for (let r = 0; r < winRows; r++) {
-    plate(g, w * 0.72, 0.34, M.glass(), 0, h * (0.42 + r * 0.16), d / 2 + 0.02)
+    plate(g, w * 0.72, 0.34, M.glass(), 0, bodyY + h * (0.42 + r * 0.16), d / 2 + 0.02)
   }
-  box(g, 0.06, h * 0.5, 0.04, M.dark(), -w * 0.14, h * 0.27, d / 2 + 0.03)           // junta de puerta
-  box(g, w * 0.5, 0.16, 0.1, M.white2(), w * 0.2, h + 0.08, 0)                        // parapeto / AC
-  if (red !== false) box(g, w * 0.99, 0.1, 0.1, M.red(), 0, h * 0.12, d / 2 + 0.02)   // cinta carmesí
+  // puerta con manija y umbral
+  box(g, w * 0.28, h * 0.72, 0.05, M.white2(), -w * 0.28, bodyY + h * 0.36, d / 2 + 0.03)
+  box(g, 0.04, 0.1, 0.06, M.metal(), -w * 0.16, bodyY + h * 0.36, d / 2 + 0.07)
+  box(g, w * 0.32, 0.06, 0.22, M.concreteDark(), -w * 0.28, bodyY + 0.03, d / 2 + 0.18)
+  // ventana lateral
+  plate(g, 0.55, 0.45, M.glass(), w / 2 + 0.02, bodyY + h * 0.55, 0, { ry: Math.PI / 2 })
+  // unidad AC + chimenea de ventilación
+  box(g, w * 0.42, 0.28, 0.55, M.white2(), w * 0.18, bodyY + h + 0.2, -d * 0.1)
+  for (let i = 0; i < 4; i++) box(g, w * 0.36, 0.02, 0.02, M.dark(), w * 0.18, bodyY + h + 0.12 + i * 0.06, -d * 0.1 + 0.28)
+  cyl(g, 0.1, 0.1, 0.35, M.metal(), -w * 0.3, bodyY + h + 0.3, d * 0.15)
+  if (red !== false) box(g, w * 0.99, 0.1, 0.1, M.red(), 0, bodyY + h * 0.12, d / 2 + 0.02)
+  // placa BOSS
+  box(g, 0.55, 0.18, 0.03, M.red(), w * 0.32, bodyY + h * 0.22, d / 2 + 0.04)
   parent.add(g)
   return g
 }
 
-// escalera industrial
+// escalera industrial (pies, peldaños, jaula si es alta)
 export function ladder(parent, x, z, h, ry = 0) {
   const g = new THREE.Group()
   g.position.set(x, 0.22, z)
   g.rotation.y = ry
-  cyl(g, 0.03, 0.03, h, M.metal(), -0.22, h / 2, 0)
-  cyl(g, 0.03, 0.03, h, M.metal(), 0.22, h / 2, 0)
-  for (let y = 0.5; y < h; y += 0.5) cyl(g, 0.03, 0.03, 0.42, M.metal(), 0, y, 0, { rz: Math.PI / 2 })
+  // pies / anclajes
+  for (const s of [-1, 1]) {
+    box(g, 0.14, 0.06, 0.22, M.dark(), s * 0.22, 0.03, 0)
+    cyl(g, 0.035, 0.035, h, M.metal(), s * 0.22, h / 2, 0)
+  }
+  for (let yy = 0.4; yy < h; yy += 0.42) {
+    cyl(g, 0.03, 0.03, 0.46, M.metal(), 0, yy, 0, { rz: Math.PI / 2 })
+    box(g, 0.48, 0.04, 0.1, M.white2(), 0, yy, 0.02)
+  }
+  // jaula de seguridad en tramos altos
+  if (h > 3.5) {
+    for (let yy = 2.2; yy < h; yy += 0.9) {
+      tor(g, 0.42, 0.03, M.metal(), 0, yy, 0.28, { rx: Math.PI / 2 })
+    }
+    for (const a of [-0.55, 0, 0.55]) {
+      cyl(g, 0.025, 0.025, Math.max(0.5, h - 2), M.metal(), Math.sin(a) * 0.4, 2 + (h - 2) / 2, 0.28 + Math.cos(a) * 0.15)
+    }
+  }
   parent.add(g)
   return g
 }
@@ -870,36 +1030,73 @@ export function ladder(parent, x, z, h, ry = 0) {
 export function gauge(parent, x, y, z, o = {}) {
   const g = new THREE.Group()
   g.position.set(x, y, z)
-  tor(g, 0.3, 0.05, M.white(), 0, 0, 0, { rx: Math.PI / 2 - 0.35, ry: o.ry ?? 0 })
-  sph(g, 0.26, mat(0xf7f8f9, { r: 0.3 }), 0, 0, 0.02, { sy: 0.6 })
-  const needle = box(g, 0.04, 0.22, 0.02, M.red(), 0, 0.05, 0.09)
+  g.rotation.y = o.ry ?? 0
+  // niple de conexión
+  cyl(g, 0.05, 0.05, 0.22, M.metal(), 0, -0.18, 0)
+  cyl(g, 0.08, 0.08, 0.06, M.dark(), 0, -0.06, 0)
+  // cuerpo / bisel
+  tor(g, 0.28, 0.045, M.metal(), 0, 0, 0.02, { rx: Math.PI / 2 })
+  cyl(g, 0.26, 0.26, 0.08, M.white2(), 0, 0, 0.02, { seg: 20 })
+  // carátula
+  sph(g, 0.22, mat(0xf0f5fb, { r: 0.25 }), 0, 0, 0.06, { sy: 0.35 })
+  // marcas de escala
+  for (let i = 0; i < 7; i++) {
+    const a = -0.9 + i * 0.3
+    box(g, 0.02, 0.06, 0.01, M.dark(), Math.sin(a) * 0.16, Math.cos(a) * 0.16, 0.1)
+  }
+  const needle = box(g, 0.035, 0.2, 0.02, M.red(), 0, 0.06, 0.11)
   needle.rotation.z = o.n0 ?? 0.6
+  sph(g, 0.04, M.dark(), 0, 0, 0.12)
   parent.add(g)
   return needle
 }
 
-// volante de válvula azul
+// volante de válvula (cuerpo + vástago + volante)
 export function valve(parent, x, y, z, o = {}) {
+  const r = o.r ?? 0.34
   const g = new THREE.Group()
   g.position.set(x, y, z)
-  tor(g, o.r ?? 0.34, 0.05, M.red(), 0, 0, 0, { rx: Math.PI / 2 })
-  for (let i = 0; i < 3; i++) {
-    const sp = box(g, (o.r ?? 0.34) * 2, 0.04, 0.05, M.red(), 0, 0, 0)
-    sp.rotation.y = (i * Math.PI) / 3
+  // cuerpo / packing
+  cyl(g, r * 0.35, r * 0.35, 0.22, M.metal(), 0, -0.18, 0)
+  cyl(g, r * 0.18, r * 0.18, 0.28, M.steel(), 0, 0.02, 0)
+  // volante
+  tor(g, r, 0.045, M.red(), 0, 0.18, 0, { rx: Math.PI / 2 })
+  for (let i = 0; i < 4; i++) {
+    const sp = box(g, r * 2, 0.035, 0.04, M.red(), 0, 0.18, 0)
+    sp.rotation.y = (i * Math.PI) / 4
   }
+  // tuerca central
+  cyl(g, r * 0.22, r * 0.22, 0.1, M.metal(), 0, 0.18, 0)
   parent.add(g)
   return g
 }
 
-// hidrante
+// hidrante de columna (base, salidas, tuerca, tapones)
 export function hydrant(parent, x, z) {
   const g = new THREE.Group()
   g.position.set(x, 0.22, z)
-  cyl(g, 0.26, 0.3, 0.24, M.red(), 0, 0.12, 0)
-  cyl(g, 0.22, 0.26, 0.8, M.red(), 0, 0.62, 0)
-  sph(g, 0.22, M.red(), 0, 1.06, 0, { sy: 0.7 })
-  cyl(g, 0.09, 0.09, 0.34, M.red(), 0.26, 0.68, 0, { rz: Math.PI / 2 })
-  cyl(g, 0.09, 0.09, 0.34, M.red(), -0.26, 0.68, 0, { rz: Math.PI / 2 })
+  // brida de piso
+  cyl(g, 0.38, 0.38, 0.1, M.concrete(), 0, 0.05, 0, { seg: 16 })
+  tor(g, 0.38, 0.04, M.metal(), 0, 0.1, 0, { rx: Math.PI / 2 })
+  // cuerpo
+  cyl(g, 0.24, 0.28, 0.22, M.red(), 0, 0.22, 0)
+  cyl(g, 0.22, 0.24, 0.85, M.red(), 0, 0.75, 0)
+  // cinchos
+  for (const yy of [0.45, 0.85, 1.15]) tor(g, 0.245, 0.025, M.redDeep(), 0, yy, 0, { rx: Math.PI / 2 })
+  // cúpula + tuerca de operación
+  sph(g, 0.22, M.red(), 0, 1.2, 0, { sy: 0.65 })
+  cyl(g, 0.08, 0.08, 0.14, M.metal(), 0, 1.38, 0)
+  box(g, 0.16, 0.08, 0.08, M.dark(), 0, 1.48, 0)
+  // salidas laterales con tapones
+  for (const s of [-1, 1]) {
+    cyl(g, 0.1, 0.1, 0.38, M.red(), s * 0.28, 0.72, 0, { rz: Math.PI / 2 })
+    cyl(g, 0.12, 0.12, 0.08, M.metal(), s * 0.48, 0.72, 0, { rz: Math.PI / 2 })
+    // cadena del tapón
+    tube(g, [V(s * 0.48, 0.78, 0), V(s * 0.4, 0.95, 0.1), V(s * 0.22, 1.05, 0)], 0.012, M.dark())
+  }
+  // salida frontal (pumper)
+  cyl(g, 0.12, 0.12, 0.32, M.red(), 0, 0.55, 0.28, { rx: Math.PI / 2 })
+  cyl(g, 0.14, 0.14, 0.08, M.metal(), 0, 0.55, 0.46, { rx: Math.PI / 2 })
   parent.add(g)
   return g
 }
@@ -951,6 +1148,189 @@ export function sparks(parent, o) {
   return up
 }
 
+// ---------- utilería de obra (props isométricos reutilizables) ----------
+
+/** pozo de visita con tapa (abierta o cerrada) */
+export function manhole(parent, x, z, o = {}) {
+  const r = o.r ?? 0.72
+  const g = new THREE.Group()
+  g.position.set(x, o.y ?? 0.22, z)
+  // collar de concreto + anillos
+  cyl(g, r + 0.18, r + 0.22, 0.16, M.concrete(), 0, 0.02, 0, { seg: 20 })
+  tor(g, r + 0.05, 0.08, M.concreteDark(), 0, 0.1, 0, { rx: Math.PI / 2 })
+  cyl(g, r * 0.88, r * 0.88, 0.05, mat(PAL.dark, { r: 0.95 }), 0, 0.04, 0)
+  const makeLid = (lx, ly, lz, tilt = 0) => {
+    const lid = cyl(g, r, r, 0.08, M.metal(), lx, ly, lz, { seg: 20 })
+    lid.rotation.z = tilt
+    // chevrones + orificios de izaje
+    for (const s of [-1, 1]) {
+      const ch = box(g, 0.08, 0.02, r * 0.9, M.red(), lx + s * 0.12, ly + 0.05, lz)
+      ch.rotation.y = s * 0.35
+      if (tilt) ch.rotation.z = tilt
+    }
+    for (const a of [0.6, -0.6]) cyl(g, 0.04, 0.04, 0.06, M.dark(), lx + Math.cos(a) * r * 0.55, ly + 0.06, lz + Math.sin(a) * r * 0.55)
+    return lid
+  }
+  if (o.open !== false) makeLid(o.lidX ?? 1.1, 0.08, o.lidZ ?? 0.9, o.tilt ?? 0.08)
+  else makeLid(0, 0.1, 0, 0)
+  parent.add(g)
+  return g
+}
+
+/** tarima con tubería o material */
+export function pallet(parent, x, y, z, o = {}) {
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  const w = o.w ?? 2.2, d = o.d ?? 1.4
+  // tablones
+  for (let i = 0; i < 5; i++) box(g, w, 0.06, 0.18, M.concreteDark(), 0, 0.1, -d / 2 + 0.15 + i * ((d - 0.3) / 4))
+  for (const s of [-0.5, 0, 0.5]) box(g, 0.14, 0.12, d, M.concrete(), s * (w / 2 - 0.2), 0.04, 0)
+  // flejes
+  for (const s of [-0.6, 0.6]) box(g, 0.04, 0.04, d * 0.9, M.metal(), s, 0.14, 0)
+  const n = o.pipes ?? 3
+  const pr = o.pr ?? 0.18
+  for (let i = 0; i < n; i++) {
+    const yy = 0.28 + i * (pr * 2.05)
+    const zz = (i - (n - 1) / 2) * (pr * 2.1)
+    cyl(g, pr, pr, w * 0.85, o.pm ?? M.white(), 0, yy, zz, { rz: Math.PI / 2 })
+    // tapas / bridas de extremo
+    for (const sx of [-1, 1]) {
+      tor(g, pr + 0.02, 0.03, M.redDeep(), sx * w * 0.4, yy, zz, { ry: Math.PI / 2 })
+    }
+  }
+  parent.add(g)
+  return g
+}
+
+/** caja de herramientas abierta */
+export function toolbox(parent, x, y, z, o = {}) {
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  box(g, 0.9, 0.4, 0.52, M.red(), 0, 0.2, 0)
+  edgeBox(g, 0.9, 0.4, 0.52, PAL.metalDark, 0, 0.2, 0)
+  // asa + pestillo
+  tor(g, 0.14, 0.025, M.metal(), 0, 0.42, 0, { rx: Math.PI / 2, arc: Math.PI })
+  box(g, 0.12, 0.06, 0.04, M.dark(), 0.38, 0.32, 0.28)
+  box(g, 0.86, 0.04, 0.48, M.redDeep(), 0, 0.42, -0.04)
+  const lid = box(g, 0.9, 0.04, 0.52, M.red(), 0, 0.66, -0.3)
+  lid.rotation.x = -1.05
+  // bandeja + herramientas
+  box(g, 0.78, 0.03, 0.4, M.dark(), 0, 0.24, 0.02)
+  for (let i = 0; i < 3; i++) box(g, 0.1, 0.08, 0.32, M.metal(), -0.24 + i * 0.22, 0.3, 0.02)
+  cyl(g, 0.03, 0.03, 0.28, M.steel(), 0.28, 0.32, 0.02, { rz: 0.3 })
+  parent.add(g)
+  return g
+}
+
+/** tablero / arrancador eléctrico de campo */
+export function fieldPanel(parent, x, y, z, o = {}) {
+  const w = o.w ?? 1.1, h = o.h ?? 1.6
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  box(g, w, h, 0.48, M.metal(), 0, h / 2, 0)
+  edgeBox(g, w, h, 0.48, PAL.metalDark, 0, h / 2, 0)
+  // puerta con junta y cerradura
+  box(g, w * 0.88, h * 0.82, 0.04, M.dark(), 0, h / 2, 0.26)
+  box(g, 0.03, h * 0.7, 0.02, M.metal(), w * 0.38, h / 2, 0.29)
+  box(g, 0.1, 0.14, 0.06, M.white2(), w * 0.32, h / 2, 0.3)
+  // breakers + placa
+  for (let i = 0; i < 6; i++) {
+    box(g, 0.14, 0.1, 0.05, i % 2 ? M.red() : M.white2(), -0.22 + (i % 2) * 0.28, 0.45 + Math.floor(i / 2) * 0.32, 0.3)
+  }
+  box(g, w * 0.5, 0.12, 0.03, M.red(), 0, h - 0.2, 0.28)
+  // conduit stub
+  cyl(g, 0.06, 0.06, 0.35, M.dark(), 0, h + 0.1, -0.1)
+  const led = sph(g, 0.04, mat(PAL.red, { r: 0.3, e: PAL.red, ei: 0.9 }), 0.3, h - 0.35, 0.3)
+  parent.add(g)
+  return { g, led }
+}
+
+/** tambor / bidón (químico, pintura, abrasivo) */
+export function drum(parent, x, y, z, o = {}) {
+  const r = o.r ?? 0.38, h = o.h ?? 0.95
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  cyl(g, r, r, h, o.m ?? M.white2(), 0, h / 2, 0, { seg: 16 })
+  tor(g, r, 0.03, M.red(), 0, h * 0.72, 0, { rx: Math.PI / 2 })
+  tor(g, r, 0.03, M.metal(), 0, h * 0.28, 0, { rx: Math.PI / 2 })
+  // tapa + tapón
+  cyl(g, r * 0.95, r * 0.95, 0.04, M.metal(), 0, h + 0.02, 0)
+  cyl(g, 0.06, 0.06, 0.08, M.dark(), r * 0.35, h + 0.06, 0)
+  // etiqueta
+  box(g, r * 1.2, 0.22, 0.02, M.red(), 0, h * 0.55, r + 0.01)
+  parent.add(g)
+  return g
+}
+
+/** carrete de cable / manguera */
+export function reel(parent, x, y, z, o = {}) {
+  const r = o.r ?? 0.55
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  // bastidor A
+  for (const s of [-1, 1]) {
+    box(g, 0.08, r * 1.6, 0.08, M.metal(), s * 0.55, r * 0.7, -0.35)
+    box(g, 0.08, r * 1.6, 0.08, M.metal(), s * 0.55, r * 0.7, 0.35)
+  }
+  box(g, 1.2, 0.08, 0.8, M.dark(), 0, 0.04, 0)
+  for (const s of [-1, 1]) cyl(g, r, r, 0.1, M.metal(), s * 0.42, r, 0, { rx: Math.PI / 2 })
+  cyl(g, 0.12, 0.12, 0.9, M.dark(), 0, r, 0, { rx: Math.PI / 2 })
+  tor(g, r * 0.75, 0.08, o.hose ?? M.red(), 0.15, r, 0.2, { ry: Math.PI / 2 })
+  // manivela
+  cyl(g, 0.04, 0.04, 0.35, M.metal(), 0.55, r, 0.5, { rz: Math.PI / 2 })
+  box(g, 0.08, 0.2, 0.08, M.dark(), 0.75, r, 0.5)
+  parent.add(g)
+  return g
+}
+
+/** estación total / trípode de topografía */
+export function surveyTripod(parent, x, z, o = {}) {
+  const g = new THREE.Group()
+  g.position.set(x, o.y ?? 0.22, z)
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2.094
+    const leg = cyl(g, 0.03, 0.03, 1.7, M.metal(), Math.cos(a) * 0.42, 0.85, Math.sin(a) * 0.42)
+    leg.rotation.z = -Math.cos(a) * 0.28
+    leg.rotation.x = Math.sin(a) * 0.28
+    box(g, 0.1, 0.04, 0.14, M.dark(), Math.cos(a) * 0.55, 0.02, Math.sin(a) * 0.55)
+  }
+  box(g, 0.32, 0.24, 0.32, M.white(), 0, 1.75, 0)
+  edgeBox(g, 0.32, 0.24, 0.32, PAL.metalDark, 0, 1.75, 0)
+  cyl(g, 0.06, 0.08, 0.28, M.dark(), 0.2, 1.75, 0, { rz: Math.PI / 2 })
+  // ocular
+  cyl(g, 0.05, 0.05, 0.12, M.metal(), 0.36, 1.75, 0, { rz: Math.PI / 2 })
+  parent.add(g)
+  return g
+}
+
+/** botellas de gas (oxiacetileno / argon) */
+export function gasBottles(parent, x, y, z, o = {}) {
+  const g = new THREE.Group()
+  g.position.set(x, y, z)
+  g.rotation.y = o.ry ?? 0
+  const n = o.n ?? 2
+  const colors = [M.red(), M.white2(), M.dark()]
+  // rack + cadena
+  box(g, n * 0.42 + 0.3, 0.08, 0.5, M.dark(), (n - 1) * 0.19, 0.04, 0)
+  box(g, n * 0.42 + 0.2, 0.06, 0.06, M.metal(), (n - 1) * 0.19, 0.85, -0.2)
+  for (let i = 0; i < n; i++) {
+    const xx = i * 0.38
+    cyl(g, 0.16, 0.16, 1.15, colors[i % 3], xx, 0.58, 0)
+    sph(g, 0.16, colors[i % 3], xx, 1.2, 0, { sy: 0.45 })
+    cyl(g, 0.04, 0.04, 0.18, M.metal(), xx, 1.35, 0)
+    // regulador
+    box(g, 0.12, 0.14, 0.1, M.metal(), xx + 0.12, 1.28, 0.08)
+    sph(g, 0.05, M.white2(), xx + 0.18, 1.32, 0.12, { sy: 0.5 })
+    tube(g, [V(xx + 0.12, 0.9, -0.15), V(xx + 0.05, 0.85, -0.2), V(xx - 0.05, 0.85, -0.2)], 0.015, M.dark())
+  }
+  parent.add(g)
+  return g
+}
+
 // panel informativo (azul plano)
 export function holo(parent, w, h, o) {
   let m
@@ -966,8 +1346,11 @@ export function holo(parent, w, h, o) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.06), m)
   g.add(mesh)
   g.material = m // comodín: los animadores ajustan opacidad aquí
-  // marco fino
-  const fr = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, 0.07)), new THREE.LineBasicMaterial({ color: PAL.blue }))
+  // marco fino (accent suave, no neon)
+  const fr = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, 0.07)),
+    new THREE.LineBasicMaterial({ color: PAL.red, transparent: true, opacity: 0.45 }),
+  )
   g.add(fr)
   parent.add(g)
   return g

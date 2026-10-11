@@ -37,73 +37,66 @@ const H_MX = 0.9
 const H_JAL = 1.5
 const H_ZMG = 3.2
 
-// ---------- texturas ----------
+// ---------- texturas (misma lengua visual que el body CSS) ----------
 const texBase = () => canvasTex(1024, 1024, (c, w, h) => {
   const s = w / SPAN_X
   const cx = (lon) => (lon - LON_MID) * KX * s + w / 2
   const cy = (lat) => h / 2 - (lat - LAT_MID) * s
-  const g = c.createLinearGradient(0, 0, w, h)
-  g.addColorStop(0, '#12305a')
-  g.addColorStop(0.55, '#0e2547')
-  g.addColorStop(1, '#0b1e3a')
+  // mismo degradado navy del body
+  const g = c.createLinearGradient(0, 0, 0, h)
+  g.addColorStop(0, '#0d2140')
+  g.addColorStop(0.4, '#0a1830')
+  g.addColorStop(1, '#06101f')
   c.fillStyle = g
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(99,198,255,0.10)'
+  // retícula 48px como en la página
+  c.strokeStyle = 'rgba(62,139,255,0.09)'
   c.lineWidth = 1
   for (let x = 0; x <= w; x += 48) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }
   for (let y = 0; y <= h; y += 48) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
-  c.strokeStyle = 'rgba(99,198,255,0.2)'
+  c.strokeStyle = 'rgba(62,139,255,0.18)'
   for (let x = 0; x <= w; x += 192) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }
   for (let y = 0; y <= h; y += 192) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
-  c.strokeStyle = 'rgba(99,198,255,0.28)'
-  c.lineWidth = 1.6
+  // estados: linework de plano
+  c.strokeStyle = 'rgba(99,198,255,0.32)'
+  c.lineWidth = 1.4
   for (const rings of STATES) for (const ring of rings) {
     c.beginPath()
     ring.forEach(([lon, lat], i) => (i ? c.lineTo(cx(lon), cy(lat)) : c.moveTo(cx(lon), cy(lat))))
     c.closePath(); c.stroke()
   }
+  // foco ZMG — suave, sin glow barato
   const [zxp, zyp] = [cx(ZMG[0]), cy(ZMG[1])]
-  const rg = c.createRadialGradient(zxp, zyp, 0, zxp, zyp, s * 1.9)
-  rg.addColorStop(0, 'rgba(190,232,255,0.5)')
-  rg.addColorStop(0.4, 'rgba(99,198,255,0.2)')
+  const rg = c.createRadialGradient(zxp, zyp, 0, zxp, zyp, s * 2.1)
+  rg.addColorStop(0, 'rgba(62,139,255,0.28)')
+  rg.addColorStop(0.45, 'rgba(62,139,255,0.1)')
   rg.addColorStop(1, 'rgba(62,139,255,0)')
   c.fillStyle = rg
-  c.beginPath(); c.arc(zxp, zyp, s * 1.9, 0, Math.PI * 2); c.fill()
-  c.fillStyle = 'rgba(233,242,252,0.16)'
+  c.beginPath(); c.arc(zxp, zyp, s * 2.1, 0, Math.PI * 2); c.fill()
+  c.fillStyle = 'rgba(233,242,252,0.22)'
   c.font = '700 44px "IBM Plex Mono", monospace'
   c.fillText('MÉXICO', cx(-105.6) - 60, cy(29.6))
-  // rótulo de Jalisco en el Pacífico (fuera de la banda central del texto),
-  // unido al estado por una guía fina como en un plano
   const jx0 = cx(-116.2), jy0 = cy(21.6)
-  c.strokeStyle = 'rgba(143,208,255,0.65)'
-  c.lineWidth = 1.6
+  c.strokeStyle = 'rgba(99,198,255,0.55)'
+  c.lineWidth = 1.4
   c.beginPath(); c.moveTo(jx0 + 40, jy0); c.lineTo(cx(-104.2), cy(20.9)); c.stroke()
-  c.fillStyle = 'rgba(143,208,255,0.95)'
+  c.fillStyle = 'rgba(159,182,216,0.95)'
   c.font = '600 26px "IBM Plex Mono", monospace'
   c.fillText('JALISCO', jx0 - 60, jy0 - 12)
 })
 
 const texJal = () => canvasTex(512, 512, (c, w, h) => {
+  // placa elevada: acento BOSS sobre la misma retícula
   const g = c.createLinearGradient(0, 0, w, h)
-  g.addColorStop(0, '#3a7ede')
-  g.addColorStop(1, '#1e4fa4')
+  g.addColorStop(0, '#1e5fd8')
+  g.addColorStop(0.55, '#3e8bff')
+  g.addColorStop(1, '#1a4aa8')
   c.fillStyle = g
   c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(255,255,255,0.18)'
+  c.strokeStyle = 'rgba(233,242,252,0.14)'
   c.lineWidth = 1
-  for (let x = 0; x <= w; x += 32) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }
-  for (let y = 0; y <= h; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
-})
-
-const texBackdrop = () => canvasTex(256, 256, (c, w, h) => {
-  c.fillStyle = '#0a1830'
-  c.fillRect(0, 0, w, h)
-  c.strokeStyle = 'rgba(99,198,255,0.055)'
-  c.lineWidth = 1
-  for (let x = 0; x <= w; x += 32) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }
-  for (let y = 0; y <= h; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
-  c.strokeStyle = 'rgba(99,198,255,0.1)'
-  c.beginPath(); c.moveTo(0, 0); c.lineTo(w, 0); c.moveTo(0, 0); c.lineTo(0, h); c.stroke()
+  for (let x = 0; x <= w; x += 48) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke() }
+  for (let y = 0; y <= h; y += 48) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke() }
 })
 
 const texPuff = () => canvasTex(128, 128, (c, w, h) => {
@@ -148,6 +141,8 @@ const VERT = `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
+// Relieve del scroll-story: textura fiel + disolución suave hacia el vuelo.
+// Sin barrido de escaneo ni luz falsa — la página ya da la atmósfera.
 const FRAG = `
   uniform sampler2D uMap;
   uniform sampler2D uNoise;
@@ -157,21 +152,23 @@ const FRAG = `
   void main() {
     vec3 base = uColor;
     if (uUseMap > 0.5) base = texture2D(uMap, vUv).rgb;
-    // luz simulada de plano: más claro arriba-izquierda
-    float lam = 0.7 + 0.45 * clamp(0.55 - vUv.x * 0.2 + (1.0 - vUv.y) * 0.5, 0.0, 1.0);
+    // modelado mínimo de volumen (sin “scanline”)
+    float lam = mix(0.9, 1.06, clamp((1.0 - vUv.y) * 0.55 + 0.2, 0.0, 1.0));
     vec3 col = base * uLight * lam;
-    // barrido de escaneo: el plano respira incluso en reposo
-    float sweep = exp(-pow((vUv.x - fract(uTime * 0.055)) * 5.5, 2.0));
-    col += uEdge * sweep * 0.2;
-    float n = texture2D(uNoise, vUv * 3.0 + vec2(uTime * 0.012, uTime * 0.009)).r;
-    // el umbral arranca por debajo del mínimo del ruido: en reposo el material
-    // es macizo (sin perforaciones) y se disuelve por completo al final
-    float thr = uProgress * 1.35 - 0.14;
-    float m = smoothstep(thr - 0.07, thr + 0.07, n);
-    float edge = 1.0 - smoothstep(0.0, 0.09, abs(n - thr));
-    col += uEdge * edge * 1.5 * (1.0 - uProgress * 0.4);
-    float fade = 1.0 - smoothstep(0.8, 1.0, uProgress);
+
+    // disolución del relato: el plano se abre desde el ruido hacia la estación 01
+    float n = texture2D(uNoise, vUv * 2.0 + vec2(uProgress * 0.08, 0.0)).r;
+    float thr = uProgress * 1.15;
+    float hold = 1.0 - smoothstep(0.0, 0.08, uProgress); // macizo al inicio
+    float m = mix(1.0, smoothstep(thr - 0.14, thr + 0.1, n), 1.0 - hold);
+    float fade = 1.0 - smoothstep(0.72, 1.0, uProgress);
     float a = m * fade;
+
+    // ribete cian solo mientras se abre el vuelo (pista narrativa, no ruido)
+    float opening = smoothstep(0.04, 0.28, uProgress) * (1.0 - smoothstep(0.55, 0.9, uProgress));
+    float rim = (1.0 - smoothstep(0.0, 0.07, abs(n - thr))) * opening;
+    col = mix(col, col + uEdge * 0.45, rim);
+
     if (a < 0.02) discard;
     gl_FragColor = vec4(col, a);
     #include <colorspace_fragment>
@@ -182,8 +179,6 @@ export function buildHeroMap(scene, updaters) {
   const noise = texNoise()
   const baseTex = texBase()
   const jalTex = texJal()
-  const backTex = texBackdrop()
-  if (backTex) { backTex.wrapS = backTex.wrapT = THREE.RepeatWrapping }
   if (!noise || !baseTex) return { setProgress() {}, resize() {}, group: null }
 
   const mats = []
@@ -208,27 +203,9 @@ export function buildHeroMap(scene, updaters) {
     return m
   }
 
-  // --- fondo sólido del primer cuadro -------------------------------------
-  // Un plano pegado a la cámara, por delante del distrito y por detrás del
-  // relieve: el mapa se lee sobre color plano y el color se disuelve para
-  // dar paso a los escenarios.
-  const BACK_DIST = 52
-  const backdrop = new THREE.Mesh(
-    new THREE.PlaneGeometry(1, 1),
-    matOf({ map: backTex, light: 1, edge: 0x63c6ff })
-  )
-  backdrop.material.uniforms.uUseMap.value = backTex ? 1 : 0
-  if (!backTex) backdrop.material.uniforms.uColor.value = new THREE.Color(0x0a1830)
-  const backMat = backdrop.material
-  backMat.side = THREE.FrontSide
-  backdrop.frustumCulled = false
-  // El fondo es una capa de pantalla: ignora la profundidad y se dibuja por
-  // delante de todo el distrito (que se extiende por delante del plano y por
-  // eso no bastaba un plano a distancia fija). El relieve va después.
-  backMat.depthTest = false
-  backMat.depthWrite = false
-  backdrop.renderOrder = 900
-  scene.add(backdrop)
+  // Fondo del primer cuadro = el blueprint del DOM (body CSS). El canvas es
+  // transparente: sin plano-shader que pelee con la retícula de la página.
+  // backProgress solo sirve para ocultar el distrito detrás del relieve.
   let backProgress = 0
 
   const group = new THREE.Group()
@@ -253,20 +230,20 @@ export function buildHeroMap(scene, updaters) {
   }
 
   // nivel 01 · México
-  group.add(slab(MX, H_MX, { map: baseTex }, 0x0a1c36))
+  group.add(slab(MX, H_MX, { map: baseTex }, 0x06101f))
   const outline = (ring, y, color, opacity) => {
     const pts = ring.map(([lon, lat]) => new THREE.Vector3(mx(lon), y, -my(lat)))
     pts.push(pts[0].clone())
     return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity }))
   }
-  const mxEdge = outline(MX, H_MX + 0.03, 0x63c6ff, 0.95)
+  const mxEdge = outline(MX, H_MX + 0.03, 0x3e8bff, 0.75)
   group.add(mxEdge)
 
   // nivel 02 · Jalisco elevado
-  const jal = slab(JALISCO, H_JAL, { map: jalTex, light: 1.05 }, 0x18427f)
+  const jal = slab(JALISCO, H_JAL, { map: jalTex, light: 1.02 }, 0x1e5fd8)
   jal.position.y = H_MX + 0.02
   group.add(jal)
-  const jalEdge = outline(JALISCO, H_MX + H_JAL + 0.07, 0xc6ecff, 1)
+  const jalEdge = outline(JALISCO, H_MX + H_JAL + 0.07, 0x63c6ff, 0.85)
   group.add(jalEdge)
 
   // nivel 03 · Guadalajara + ZMG
@@ -317,31 +294,20 @@ export function buildHeroMap(scene, updaters) {
 
   let progress = 0
   let smokeOn = 0
-  function setProgress(v, camera) {
+  const mxEdgeOp = mxEdge.material.opacity
+  const jalEdgeOp = jalEdge.material.opacity
+  function setProgress(v) {
     progress = Math.min(1, Math.max(0, v))
-    if (camera) placeBackdrop(camera)
     const sst = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }
-    backProgress = sst(0.4, 0.95, progress)      // el color se retira al final
-    backMat.uniforms.uProgress.value = backProgress
-    backdrop.visible = backProgress < 0.995
+    backProgress = sst(0.4, 0.95, progress)
     for (const m of mats) m.uniforms.uProgress.value = progress
-    smokeOn = Math.sin(Math.min(1, progress * 1.05) * Math.PI)
+    // contornos se retiran con el vuelo (mismo timing que el relieve)
+    const edgeFade = 1 - sst(0.15, 0.75, progress)
+    mxEdge.material.opacity = mxEdgeOp * edgeFade
+    jalEdge.material.opacity = jalEdgeOp * edgeFade
+    // humo breve al abrir el tramo, no una nube permanente
+    smokeOn = Math.sin(Math.min(1, Math.max(0, (progress - 0.12) / 0.55)) * Math.PI) * 0.7
     group.visible = progress <= 0.995
-  }
-
-  // Composición: el relieve es el fondo principal del primer pantallazo,
-  // centrado y grande; el mensaje va encima y la rotulación del plano vive en
-  // la banda inferior para no chocar con el texto.
-  // coloca el fondo al frente de la cámara, cubriendo todo el cuadro
-  const _fwd = new THREE.Vector3()
-  const placeBackdrop = (camera) => {
-    camera.getWorldDirection(_fwd)
-    backdrop.position.copy(camera.position).addScaledVector(_fwd, BACK_DIST)
-    backdrop.quaternion.copy(camera.quaternion)
-    const hh = 2 * BACK_DIST * Math.tan((camera.fov * Math.PI) / 360)
-    const ww = hh * (innerWidth / innerHeight)
-    backdrop.scale.set(ww * 1.06, hh * 1.06, 1)
-    if (backTex) backTex.repeat.set(Math.max(1, Math.round(ww / 5)), Math.max(1, Math.round(hh / 5)))
   }
 
   function resize() {
@@ -371,7 +337,7 @@ export function buildHeroMap(scene, updaters) {
     beacon.position.y = beaconBase + pulse * 0.12
     ring.scale.setScalar(1 + pulse * 0.09)
     for (let i = 0; i < city.length; i++) city[i].position.y = city[i].userData.baseY + Math.sin(t * 1.3 + i * 0.7) * 0.05
-    smokeMat.opacity = smokeOn * 0.5
+    smokeMat.opacity = smokeOn * 0.28
     if (smokeOn <= 0.001) return
     const arr = smokeGeo.attributes.position.array
     for (let i = 0; i < COUNT; i++) {

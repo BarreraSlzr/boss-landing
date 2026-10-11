@@ -262,6 +262,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isMobile ? 1.75 : 2))
 renderer.setSize(innerWidth, innerHeight)
+renderer.setClearColor(0x000000, 0) // deja ver el blueprint del body CSS
 renderer.toneMapping = THREE.NoToneMapping
 
 const scene = new THREE.Scene()

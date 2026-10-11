@@ -34,26 +34,33 @@ export function house(g, x, z, o = {}) {
   const gr = new THREE.Group()
   gr.position.set(x, y, z)
   gr.rotation.y = o.ry ?? 0
-  rbox(gr, w, h, d, 0.14, M.white(), 0, h / 2, 0)
-  plate(gr, w * 0.8, 0.4, M.glass(), 0, h * 0.62, d / 2 + 0.02)          // banda de ventana
-  box(gr, w * 0.8 + 0.1, 0.05, 0.1, M.white2(), 0, h * 0.4, d / 2 + 0.05) // repisa
-  box(gr, 0.7, 1.1, 0.06, M.dark(), -w * 0.26, 0.55, d / 2 + 0.02)      // puerta
-  box(gr, 0.04, 0.12, 0.02, M.white2(), -w * 0.26 + 0.26, 0.6, d / 2 + 0.06) // manija
-  box(gr, 0.9, 0.1, 0.5, M.concrete(), -w * 0.26, 0.05, d / 2 + 0.2)    // escalón
-  box(gr, w + 0.3, 0.18, d + 0.3, M.white2(), 0, h + 0.09, 0)            // parapeto
-  box(gr, w * 0.99, 0.09, 0.09, M.red(), 0, h * 0.16, d / 2 + 0.03)      // cinta BOSS
-  cyl(gr, 0.06, 0.06, 0.5, M.metal(), w * 0.34, h + 0.4, -d * 0.34)      // respiradero
+  box(gr, w + 0.25, 0.12, d + 0.25, M.concrete(), 0, 0.06, 0)
+  rbox(gr, w, h, d, 0.14, M.white(), 0, h / 2 + 0.12, 0)
+  edgeBox(gr, w, h, d, PAL.metalDark, 0, h / 2 + 0.12, 0)
+  const by = 0.12
+  // ventanas en rejilla
+  for (let c = 0; c < 3; c++) {
+    plate(gr, w * 0.2, 0.38, M.glass(), (c - 1) * w * 0.28, by + h * 0.58, d / 2 + 0.02)
+  }
+  box(gr, w * 0.8 + 0.1, 0.05, 0.1, M.white2(), 0, by + h * 0.38, d / 2 + 0.05)
+  box(gr, 0.75, 1.2, 0.06, M.dark(), -w * 0.26, by + 0.6, d / 2 + 0.02)
+  box(gr, 0.04, 0.12, 0.03, M.white2(), -w * 0.26 + 0.28, by + 0.65, d / 2 + 0.06)
+  box(gr, 0.95, 0.1, 0.55, M.concrete(), -w * 0.26, by + 0.05, d / 2 + 0.22)
+  box(gr, w + 0.3, 0.18, d + 0.3, M.white2(), 0, by + h + 0.09, 0)
+  box(gr, w * 0.99, 0.09, 0.09, M.red(), 0, by + h * 0.16, d / 2 + 0.03)
+  plate(gr, 0.45, 0.35, M.glass(), w / 2 + 0.02, by + h * 0.55, 0, { ry: Math.PI / 2 })
+  cyl(gr, 0.06, 0.06, 0.5, M.metal(), w * 0.34, by + h + 0.4, -d * 0.34)
   const v = o.variant ?? 0
   if (v === 0) {
-    box(gr, 0.7, 0.42, 0.6, M.metal(), w * 0.24, h + 0.4, -d * 0.16)     // AC
-    cyl(gr, 0.22, 0.22, 0.1, M.dark(), w * 0.24, h + 0.62, -d * 0.16, { rx: Math.PI / 2 })
-    for (const s of [-1, 1]) box(gr, 0.02, 0.3, 0.62, M.dark(), w * 0.24 + s * 0.28, h + 0.4, -d * 0.16) // rejillas
+    box(gr, 0.75, 0.42, 0.65, M.metal(), w * 0.24, by + h + 0.4, -d * 0.16)
+    for (let i = 0; i < 4; i++) box(gr, 0.65, 0.02, 0.02, M.dark(), w * 0.24, by + h + 0.25 + i * 0.08, -d * 0.16 + 0.34)
   } else if (v === 1) {
-    cyl(gr, 0.4, 0.4, 0.8, M.white2(), -w * 0.22, h + 0.6, d * 0.16)    // tinaco
-    sph(gr, 0.4, M.white2(), -w * 0.22, h + 1.02, d * 0.16, { sy: 0.5 })
+    cyl(gr, 0.4, 0.4, 0.8, M.white2(), -w * 0.22, by + h + 0.6, d * 0.16)
+    sph(gr, 0.4, M.white2(), -w * 0.22, by + h + 1.02, d * 0.16, { sy: 0.5 })
+    tor(gr, 0.4, 0.03, M.red(), -w * 0.22, by + h + 0.35, d * 0.16, { rx: Math.PI / 2 })
   } else {
-    cyl(gr, 0.03, 0.03, 1.4, M.metal(), w * 0.2, h + 0.9, -d * 0.2)      // antena
-    sph(gr, 0.07, tipMat, w * 0.2, h + 1.66, -d * 0.2)
+    cyl(gr, 0.03, 0.03, 1.4, M.metal(), w * 0.2, by + h + 0.9, -d * 0.2)
+    sph(gr, 0.07, tipMat, w * 0.2, by + h + 1.66, -d * 0.2)
   }
   g.add(gr)
   blob(g, x, z, w + 1.6, d + 1.6, 0.23)
@@ -65,12 +72,15 @@ export function tower(g, x, z, o = {}) {
   const h = o.h ?? 9, w = o.w ?? 2.2, y = o.y ?? 0.36
   const gr = new THREE.Group()
   gr.position.set(x, y, z)
-  rbox(gr, w, h, w, 0.1, M.white(), 0, h / 2, 0)
-  plate(gr, w * 0.7, h * 0.66, M.glass(), 0, h * 0.52, w / 2 + 0.02)
-  box(gr, w * 0.99, 0.08, 0.08, M.red(), 0, h * 0.14, w / 2 + 0.02)
-  box(gr, w + 0.24, 0.14, w + 0.24, M.white2(), 0, h + 0.07, 0)
-  cyl(gr, 0.03, 0.03, 1.6, M.metal(), 0, h + 0.94, 0)
-  sph(gr, 0.08, tipMat, 0, h + 1.76, 0)
+  box(gr, w + 0.3, 0.16, w + 0.3, M.concrete(), 0, 0.08, 0)
+  rbox(gr, w, h, w, 0.1, M.white(), 0, h / 2 + 0.16, 0)
+  for (let r = 0; r < 4; r++) {
+    plate(gr, w * 0.55, h * 0.12, M.glass(), 0, 0.16 + h * (0.25 + r * 0.18), w / 2 + 0.02)
+  }
+  box(gr, w * 0.99, 0.08, 0.08, M.red(), 0, 0.16 + h * 0.14, w / 2 + 0.02)
+  box(gr, w + 0.24, 0.14, w + 0.24, M.white2(), 0, 0.16 + h + 0.07, 0)
+  cyl(gr, 0.03, 0.03, 1.6, M.metal(), 0, 0.16 + h + 0.94, 0)
+  sph(gr, 0.08, tipMat, 0, 0.16 + h + 1.76, 0)
   g.add(gr)
   blob(g, x, z, w + 2, w + 2, 0.23)
   return gr
@@ -78,9 +88,10 @@ export function tower(g, x, z, o = {}) {
 
 // árbol de maqueta (tronco + copas sage)
 export function tree(g, x, z, s = 1) {
-  cyl(g, 0.12 * s, 0.16 * s, 0.9 * s, mat(PAL.sageTrunk, { r: 0.9 }), x, 0.22 + 0.45 * s, z)
-  sph(g, 0.75 * s, mat(PAL.sage, { r: 0.9 }), x, 0.22 + 1.1 * s, z, { sy: 1.15 })
-  sph(g, 0.5 * s, mat(PAL.sage, { r: 0.9 }), x + 0.3 * s, 0.22 + 1.45 * s, z - 0.2 * s)
+  cyl(g, 0.1 * s, 0.16 * s, 1.0 * s, mat(PAL.sageTrunk, { r: 0.9 }), x, 0.22 + 0.5 * s, z)
+  sph(g, 0.7 * s, mat(PAL.sage, { r: 0.9 }), x, 0.22 + 1.15 * s, z, { sy: 1.1 })
+  sph(g, 0.48 * s, mat(PAL.sage, { r: 0.9 }), x + 0.32 * s, 0.22 + 1.5 * s, z - 0.18 * s)
+  sph(g, 0.4 * s, mat(PAL.sage, { r: 0.9 }), x - 0.28 * s, 0.22 + 1.4 * s, z + 0.22 * s)
   blob(g, x, z, 2.2 * s, 2.2 * s, 0.23)
 }
 
@@ -89,9 +100,11 @@ export function lamp(g, x, z, ry = 0) {
   const gr = new THREE.Group()
   gr.position.set(x, 0.22, z)
   gr.rotation.y = ry
-  cyl(gr, 0.05, 0.07, 2.6, M.metal(), 0, 1.3, 0)
-  cyl(gr, 0.04, 0.04, 0.9, M.metal(), 0.42, 2.62, 0, { rz: Math.PI / 2 })
-  sph(gr, 0.14, lampMat, 0.82, 2.5, 0)
+  box(gr, 0.28, 0.08, 0.28, M.concrete(), 0, 0.04, 0)
+  cyl(gr, 0.05, 0.07, 2.7, M.metal(), 0, 1.4, 0)
+  cyl(gr, 0.04, 0.04, 0.95, M.metal(), 0.45, 2.75, 0, { rz: Math.PI / 2 })
+  box(gr, 0.22, 0.08, 0.22, M.dark(), 0.9, 2.65, 0)
+  sph(gr, 0.15, lampMat, 0.9, 2.52, 0)
   g.add(gr)
   return gr
 }
@@ -115,9 +128,14 @@ export function fence(g, x, z, len = 6, ry = 0) {
   gr.position.set(x, 0.22, z)
   gr.rotation.y = ry
   const n = Math.round(len / 1.5)
-  for (let i = 0; i <= n; i++) cyl(gr, 0.04, 0.04, 0.9, M.metal(), -len / 2 + (i * len) / n, 0.45, 0)
-  box(gr, len, 0.07, 0.07, M.white2(), 0, 0.72, 0)
-  box(gr, len, 0.07, 0.07, M.white2(), 0, 0.34, 0)
+  for (let i = 0; i <= n; i++) {
+    const px = -len / 2 + (i * len) / n
+    box(gr, 0.1, 0.05, 0.1, M.dark(), px, 0.03, 0)
+    cyl(gr, 0.04, 0.04, 1.0, M.metal(), px, 0.52, 0)
+  }
+  box(gr, len, 0.07, 0.07, M.white2(), 0, 0.78, 0)
+  box(gr, len, 0.07, 0.07, M.white2(), 0, 0.4, 0)
+  box(gr, len, 0.05, 0.05, M.red(), 0, 0.95, 0)
   g.add(gr)
   return gr
 }
@@ -147,6 +165,8 @@ export function pipeRun(g, x, z, o = {}) {
   gr.position.set(x, y, z)
   gr.rotation.y = ry
   cyl(gr, 0.18, 0.18, len, M.red(), 0, 0.4, 0, { rx: Math.PI / 2 })
+  K.flange(gr, 0, 0.4, len / 2 - 0.2, { r: 0.24, bolts: 6 })
+  K.flange(gr, 0, 0.4, -len / 2 + 0.2, { r: 0.24, bolts: 6 })
   for (const s of [-1, 1]) box(gr, 0.5, 0.4, 0.4, M.concrete(), s * (len / 2 - 0.6), 0.2, 0)
   cyl(gr, 0.18, 0.18, 1.0, M.red(), len / 2, 1.1, 0)
   tor(gr, 0.24, 0.05, M.redDeep(), len / 2, 1.6, 0, { rx: Math.PI / 2 })
