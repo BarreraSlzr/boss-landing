@@ -77,7 +77,13 @@ function buildSections() {
     return `mailto:${BRAND.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
   const navWa = document.getElementById('nav-wa')
-  if (navWa) navWa.href = `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent('Hola BOSS — quiero cotizar un proyecto.')}`
+  if (navWa) {
+    navWa.href = `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent('Hola BOSS — quiero cotizar un proyecto.')}`
+    navWa.setAttribute('aria-label', 'WhatsApp')
+    // sin <title> del SVG: evita “WhatsAppWhatsApp” en el texto accesible
+    const chipIcon = waIcon.replace(/<title>[\s\S]*?<\/title>/i, '')
+    navWa.innerHTML = `<span class="wa-chip-glyph" aria-hidden="true">${chipIcon}</span><span class="wa-chip-label">WhatsApp</span>`
+  }
   const waHref = () => {
     const text = 'Hola BOSS — me interesa una cotización de proyecto. (vía boss.internetfriends.xyz)'
     return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(text)}`
@@ -252,6 +258,31 @@ sections.forEach((sec, idx) => {
   railButtons.push(b)
 })
 
+// dock inferior: escenarios 01–14 + Detener (navegación móvil)
+const sceneDock = document.createElement('div')
+sceneDock.id = 'scene-dock'
+const sceneNav = document.createElement('nav')
+sceneNav.id = 'scene-nav'
+sceneNav.setAttribute('aria-label', 'Escenarios')
+const sceneButtons = []
+TOPICS.forEach((tp, i) => {
+  const idx = i + 1
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.textContent = tp.id
+  b.title = tp.title
+  b.setAttribute('aria-label', `Escenario ${tp.id}`)
+  b.addEventListener('click', () => {
+    cancelTour()
+    if (Math.abs(idx - activeIdx) > 1) flyTo(idx)
+    else gotoSection(idx)
+  })
+  sceneNav.appendChild(b)
+  sceneButtons.push(b)
+})
+sceneDock.appendChild(sceneNav)
+document.body.appendChild(sceneDock)
+
 const progressBar = $('#progress')
 
 // ---------- renderer ----------
@@ -353,6 +384,16 @@ function readScroll() {
 function sectionH() {
   return sections[0].offsetHeight || innerHeight
 }
+function syncSceneDock(idx) {
+  sceneButtons.forEach((b, i) => {
+    const on = i + 1 === idx
+    b.classList.toggle('active', on)
+    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+  })
+  // visible en escenarios 01–14 (antes de contacto); Detener sigue vía body.touring
+  sceneDock.classList.toggle('is-visible', idx >= 1 && idx <= 14)
+}
+
 function updateActive() {
   const h = sectionH()
   const idx = Math.min(sections.length - 1, Math.max(0, Math.floor(scrollY / h + 0.5)))
@@ -360,6 +401,7 @@ function updateActive() {
     activeIdx = idx
     sections.forEach((s, i) => s.classList.toggle('active', i === idx))
     railButtons.forEach((b, i) => b.classList.toggle('active', i === idx))
+    syncSceneDock(idx)
   }
 }
 
@@ -420,13 +462,13 @@ const stationText = (i) => {
 }
 const tourDelay = (i) => Math.min(8000, 2400 + stationText(i).length * 14)
 
-// control de parada persistente (el botón del héroe se sale de vista)
+// control de parada persistente (junto al dock de escenarios)
 const tourStop = document.createElement('button')
 tourStop.id = 'tour-stop'
 tourStop.type = 'button'
 tourStop.title = 'Detener recorrido automático'
 tourStop.textContent = '✕ DETENER'
-document.body.appendChild(tourStop)
+sceneDock.appendChild(tourStop)
 
 function startTour() {
   if (tour.on) return
