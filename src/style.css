@@ -138,7 +138,6 @@ body.ready #loader { opacity: 0; visibility: hidden; }
   top: 0;
   left: 0;
   right: 0;
-  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -293,7 +292,8 @@ body.ready #loader { opacity: 0; visibility: hidden; }
   gap: var(--rail-gap);
   align-items: flex-end;
   max-height: min(92vh, 920px);
-  z-index: 30;
+  /* detrás de #story en pintura; los hits llegan porque #story deja pasar eventos */
+  z-index: 5;
   pointer-events: auto;
 }
 
@@ -431,7 +431,32 @@ body.ready #loader { opacity: 0; visibility: hidden; }
 
 /* ---------- secciones story ---------- */
 
-#story { position: relative; z-index: 10; }
+/*
+ * #story pinta encima del rail (espacio completo), pero no captura hits:
+ * el espacio vacío deja pasar clics al #rail. Solo islas de contenido
+ * recuperan pointer-events.
+ */
+#story {
+  position: relative;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#story :is(
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  .station,
+  .quote-card,
+  .contact-card,
+  .hero-ctas,
+  .clients-plate
+) {
+  pointer-events: auto;
+}
 
 .section {
   position: relative;
