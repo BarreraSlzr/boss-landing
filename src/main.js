@@ -351,11 +351,16 @@ sceneDock.id = 'scene-dock'
 const sceneNav = document.createElement('nav')
 sceneNav.id = 'scene-nav'
 sceneNav.setAttribute('aria-label', 'Escenarios')
+const SCENE_CHEVRON_L =
+  '<svg class="scene-nav-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M10.2 3.2 5.4 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const SCENE_CHEVRON_R =
+  '<svg class="scene-nav-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M5.8 3.2 10.6 8 5.8 12.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 const scenePrev = document.createElement('button')
 scenePrev.type = 'button'
 scenePrev.id = 'scene-prev'
-scenePrev.setAttribute('aria-label', 'Escenario anterior')
-scenePrev.textContent = '← Anterior'
+scenePrev.setAttribute('aria-label', 'Escenario anterior (tecla ↑)')
+scenePrev.title = 'Anterior · ↑'
+scenePrev.innerHTML = `${SCENE_CHEVRON_L}<kbd class="scene-nav-kbd" aria-hidden="true">↑</kbd>`
 const sceneContact = document.createElement('a')
 sceneContact.href = '#contacto'
 sceneContact.id = 'scene-contact'
@@ -365,8 +370,9 @@ sceneContact.textContent = 'Contacto'
 const sceneNext = document.createElement('button')
 sceneNext.type = 'button'
 sceneNext.id = 'scene-next'
-sceneNext.setAttribute('aria-label', 'Escenario siguiente')
-sceneNext.textContent = 'Siguiente →'
+sceneNext.setAttribute('aria-label', 'Escenario siguiente (tecla ↓)')
+sceneNext.title = 'Siguiente · ↓'
+sceneNext.innerHTML = `${SCENE_CHEVRON_R}<kbd class="scene-nav-kbd" aria-hidden="true">↓</kbd>`
 const jumpScene = (dir) => {
   const target = Math.min(SCENE_LAST, Math.max(SCENE_FIRST, activeIdx + dir))
   if (target === activeIdx) return
@@ -561,7 +567,7 @@ document.querySelectorAll('[data-goto]').forEach((a) => {
 // más letras → más espera (2400 ms base + 14 ms/carácter, techo 8 s).
 const TOUR_STOP_LABEL = 'Detener recorrido'
 const TOUR_START_LABEL = HERO.cta[1]
-const tour = { on: false, timer: 0 }
+const tour = { on: false, timer: 0, raf: 0 }
 const tourBtn = $('#tour-btn')
 
 const stationText = (i) => {
@@ -572,53 +578,130 @@ const stationText = (i) => {
 }
 const tourDelay = (i) => Math.min(8000, 2400 + stationText(i).length * 14)
 
-// control de parada persistente (junto al dock de escenarios)
-const tourStop = document.createElement('button')
-tourStop.id = 'tour-stop'
-tourStop.type = 'button'
-tourStop.title = 'Detener recorrido automático'
-tourStop.textContent = '✕ DETENER'
-sceneDock.appendChild(tourStop)
+// play/stop del recorrido (dock; en stop = anillo radial de progreso por estación)
+const TOUR_PLAY_MARK = '▶'
+const TOUR_STOP_MARK = '■'
+const TOUR_RING_R = 15.5
+const TOUR_RING_LEN = 2 * Math.PI * TOUR_RING_R
+const tourToggle = document.createElement('button')
+tourToggle.id = 'tour-toggle'
+tourToggle.type = 'button'
+tourToggle.setAttribute('aria-pressed', 'false')
+tourToggle.innerHTML = `
+  <svg class="tour-progress" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+    <circle class="tour-progress-track" cx="18" cy="18" r="${TOUR_RING_R}" fill="none" />
+    <circle class="tour-progress-value" cx="18" cy="18" r="${TOUR_RING_R}" fill="none" />
+  </svg>
+  <span class="tour-toggle-icon" aria-hidden="true">${TOUR_PLAY_MARK}</span>`
+sceneDock.appendChild(tourToggle)
+const tourIcon = tourToggle.querySelector('.tour-toggle-icon')
+const tourProgressValue = tourToggle.querySelector('.tour-progress-value')
+tourProgressValue.style.strokeDasharray = `${TOUR_RING_LEN}`
+tourProgressValue.style.strokeDashoffset = `${TOUR_RING_LEN}`
+
+function setTourProgress(p) {
+  const t = Math.min(1, Math.max(0, p))
+  tourToggle.style.setProperty('--tour-p', t.toFixed(4))
+  tourProgressValue.style.strokeDashoffset = `${TOUR_RING_LEN * (1 - t)}`
+}
+
+function clearTourProgressAnim() {
+  cancelAnimationFrame(tour.raf)
+  tour.raf = 0
+  setTourProgress(0)
+}
+
+function syncTourControls() {
+  const on = tour.on
+  tourBtn.textContent = on ? TOUR_STOP_LABEL : TOUR_START_LABEL
+  tourToggle.classList.toggle('is-playing', on)
+  tourToggle.setAttribute('aria-pressed', on ? 'true' : 'false')
+  tourToggle.setAttribute(
+    'aria-label',
+    on ? 'Detener recorrido automático' : 'Reproducir recorrido automático',
+  )
+  tourToggle.title = on ? 'Detener recorrido' : 'Reproducir recorrido'
+  tourIcon.textContent = on ? TOUR_STOP_MARK : TOUR_PLAY_MARK
+  if (!on) clearTourProgressAnim()
+}
 
 function startTour() {
   if (tour.on) return
   tour.on = true
   hideKbdHint()
   document.body.classList.add('touring')
-  tourBtn.textContent = TOUR_STOP_LABEL
+  syncTourControls()
   const LAST = sections.length - 1
   const step = (i) => {
     if (!tour.on) return
     gotoSection(i)
+    const inScenes = i >= SCENE_FIRST && i <= SCENE_LAST
+    const delay = tourDelay(i)
+    cancelAnimationFrame(tour.raf)
+    tour.raf = 0
+    // anillo radial solo mientras el dock de escenarios está a la vista
+    if (!inScenes) {
+      setTourProgress(0)
+    } else if (reduced) {
+      setTourProgress(1)
+    } else {
+      const t0 = performance.now()
+      setTourProgress(0)
+      const tick = (now) => {
+        if (!tour.on) return
+        const p = Math.min(1, (now - t0) / delay)
+        setTourProgress(p)
+        if (p < 1) tour.raf = requestAnimationFrame(tick)
+      }
+      tour.raf = requestAnimationFrame(tick)
+    }
     tour.timer = setTimeout(() => {
       if (!tour.on || i >= LAST) { stopTour(); return }
       step(i + 1)
-    }, tourDelay(i))
+    }, delay)
   }
   step(Math.max(1, Math.min(LAST, activeIdx)))
 }
 
 function stopTour() {
   clearTimeout(tour.timer)
+  cancelAnimationFrame(tour.raf)
+  tour.raf = 0
   tour.on = false
   document.body.classList.remove('touring')
-  tourBtn.textContent = TOUR_START_LABEL
+  syncTourControls()
 }
 
 function cancelTour() {
   if (tour.on) stopTour()
 }
 
-tourBtn.addEventListener('click', (e) => {
+function toggleTour(e) {
   e.preventDefault()
   tour.on ? stopTour() : startTour()
-})
-tourStop.addEventListener('click', stopTour)
+}
 
-// cualquier gesto del usuario devuelve el control del scroll
+tourBtn.addEventListener('click', toggleTour)
+tourToggle.addEventListener('click', toggleTour)
+syncTourControls()
+
+const isTourControl = (t) =>
+  t instanceof Element && !!t.closest('#tour-toggle, #tour-btn')
+
+// gestos del usuario detienen el tour (excepto el propio play/stop)
 addEventListener('wheel', cancelTour, { passive: true })
-addEventListener('touchstart', cancelTour, { passive: true })
-addEventListener('keydown', cancelTour)
+addEventListener(
+  'touchstart',
+  (e) => {
+    if (isTourControl(e.target)) return
+    cancelTour()
+  },
+  { passive: true },
+)
+addEventListener('keydown', (e) => {
+  if (isTourControl(e.target)) return
+  cancelTour()
+})
 
 // ---------- mueblería de plano sobre el relieve ----------
 // El primer cuadro es una hoja de plano: marco con esquinas, cajetín,

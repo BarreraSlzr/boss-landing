@@ -1440,7 +1440,7 @@ body.ready #sheet .plan-callout {
   transition: none;
 }
 
-/* dock inferior: prev/next (escenarios) + Detener */
+/* dock inferior: prev/next + Contacto + play/stop (desktop y móvil) */
 #scene-dock {
   position: fixed;
   left: 12px;
@@ -1450,6 +1450,8 @@ body.ready #sheet .plan-callout {
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: 520px;
+  margin-inline: auto;
   pointer-events: none;
   opacity: 0;
   transform: translateY(10px);
@@ -1458,15 +1460,22 @@ body.ready #sheet .plan-callout {
     transform 0.3s var(--ease);
 }
 
-body.touring #scene-dock {
+/* solo estaciones 01–14; oculto en Inicio, Contacto y Cotizar (también en tour) */
+#scene-dock.is-visible {
   opacity: 1;
   transform: none;
 }
 
 #scene-nav {
   display: none;
+  flex: 1;
+  min-width: 0;
   gap: 6px;
   pointer-events: auto;
+}
+
+#scene-dock.is-visible #scene-nav {
+  display: flex;
 }
 
 #scene-nav button,
@@ -1479,7 +1488,8 @@ body.touring #scene-dock {
   background: rgba(10, 24, 48, 0.88);
   border: 1px solid rgba(62, 139, 255, 0.35);
   border-radius: 99px;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  min-height: 40px;
   cursor: pointer;
   backdrop-filter: blur(8px);
   transition:
@@ -1491,125 +1501,188 @@ body.touring #scene-dock {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 #scene-nav button:hover,
-#scene-nav a:hover {
+#scene-nav a:hover,
+#scene-nav button:focus-visible,
+#scene-nav a:focus-visible {
   border-color: rgba(62, 139, 255, 0.6);
   color: #fff;
+  outline: none;
 }
 
-#scene-contact {
+#scene-prev,
+#scene-next {
+  flex: none;
+  width: auto;
+  min-width: 52px;
+  height: 40px;
+  padding: 0 10px;
+  color: var(--blue);
+}
+
+#scene-nav .scene-nav-icon {
+  display: block;
+  flex: none;
+}
+
+#scene-nav .scene-nav-kbd {
+  flex: none;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 2px 5px;
+  border: 1px solid rgba(159, 182, 216, 0.35);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: rgba(14, 32, 54, 0.9);
+  color: #e9f2fc;
+  line-height: 1;
+}
+
+/* id+element beats `#scene-nav a { display: inline-flex }` on desktop */
+#scene-nav a#scene-contact {
+  display: none;
+  flex: 1;
+  min-width: 0;
   color: #fff;
   border-color: rgba(62, 139, 255, 0.55);
   background: rgba(16, 40, 78, 0.92);
 }
 
-#scene-contact:hover {
+#scene-contact:hover,
+#scene-contact:focus-visible {
   border-color: var(--accent);
   color: #fff;
 }
 
-/* control del recorrido automático (vive dentro del dock) */
-#tour-stop {
+/* play/stop del recorrido (sutil ~32%; en stop = borde radial de progreso) */
+#tour-toggle {
+  --tour-p: 0;
+  position: relative;
   flex: none;
-  margin-left: auto;
   display: none;
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  color: var(--blue);
-  background: rgba(10, 24, 48, 0.88);
-  border: 1px solid rgba(62, 139, 255, 0.4);
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  padding: 0;
   border-radius: 99px;
-  padding: 8px 14px;
+  border: 1px solid rgba(62, 139, 255, 0.35);
+  background: rgba(10, 24, 48, 0.72);
+  color: var(--blue);
   cursor: pointer;
   backdrop-filter: blur(8px);
   pointer-events: auto;
+  opacity: 0.32;
+  transition:
+    opacity 0.25s var(--ease),
+    border-color 0.2s,
+    color 0.2s,
+    background 0.2s,
+    transform 0.2s var(--ease);
 }
 
-#tour-stop:hover {
-  border-color: var(--accent);
+#scene-dock.is-visible #tour-toggle {
+  display: inline-flex;
+}
+
+#tour-toggle .tour-progress {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+
+#tour-toggle .tour-progress-track,
+#tour-toggle .tour-progress-value {
+  stroke-width: 2.25;
+}
+
+#tour-toggle .tour-progress-track {
+  stroke: rgba(62, 139, 255, 0.22);
+}
+
+#tour-toggle .tour-progress-value {
+  stroke: var(--blue);
+  stroke-linecap: round;
+  transition: none;
+}
+
+#tour-toggle.is-playing .tour-progress {
+  opacity: 1;
+}
+
+#tour-toggle .tour-toggle-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  font-size: 11px;
+  line-height: 1;
+  transform: translateX(0.5px);
+}
+
+#tour-toggle.is-playing .tour-toggle-icon {
+  transform: none;
+  font-size: 10px;
+}
+
+#tour-toggle:hover,
+#tour-toggle:focus-visible {
+  opacity: 0.85;
+  border-color: rgba(62, 139, 255, 0.6);
   color: #fff;
+  outline: none;
 }
 
-@keyframes tour-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+#tour-toggle.is-playing {
+  opacity: 0.72;
+  border-color: transparent;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(62, 139, 255, 0.18);
 }
 
-body.touring #tour-stop {
-  display: inline-block;
-  animation: tour-in 0.35s var(--ease);
+#tour-toggle.is-playing:hover,
+#tour-toggle.is-playing:focus-visible {
+  opacity: 0.95;
 }
 
 @media (max-width: 900px) {
   #rail {
     display: none;
   }
-  #scene-dock.is-visible {
-    opacity: 1;
-    transform: none;
+  #scene-dock {
+    max-width: none;
   }
-  #scene-dock.is-visible #scene-nav {
-    display: flex;
+  #scene-nav a#scene-contact {
+    display: inline-flex;
+  }
+  /* móvil: solo icono (sin kbd) para no forzar segunda línea */
+  #scene-nav .scene-nav-kbd {
+    display: none;
+  }
+  #scene-prev,
+  #scene-next {
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
   }
 }
 
-/* chip de ayuda del teclado (se desvanece solo o al primer uso) */
+/* chip de ayuda del teclado: oculto — las teclas viven en el dock */
 #kbd-hint {
-  position: fixed;
-  left: 22px;
-  bottom: 18px;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 12px;
-  border: 1px solid rgba(99, 198, 255, 0.16);
-  border-radius: 10px;
-  background: rgba(10, 24, 48, 0.82);
-  backdrop-filter: blur(6px);
-  color: #9fb6d8;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  opacity: 0;
-  transform: translateY(6px);
-  transition:
-    opacity 0.5s var(--ease),
-    transform 0.5s var(--ease);
-  pointer-events: none;
-}
-#kbd-hint.show {
-  opacity: 1;
-  transform: none;
-}
-#kbd-hint.hide,
-body.touring #kbd-hint {
-  opacity: 0;
-  transform: translateY(6px);
-}
-#kbd-hint kbd {
-  font: inherit;
-  padding: 2px 6px;
-  border: 1px solid rgba(159, 182, 216, 0.35);
-  border-bottom-width: 2px;
-  border-radius: 5px;
-  background: rgba(14, 32, 54, 0.9);
-  color: #e9f2fc;
-}
-@media (max-width: 640px) {
-  #kbd-hint {
-    display: none;
-  }
+  display: none;
 }
 
 /* línea técnica única por servicio (sustituye tooltip y etiquetas duplicadas) */
