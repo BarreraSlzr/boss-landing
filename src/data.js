@@ -269,7 +269,7 @@ export const HERO = {
   // credenciales que el mensaje NO dice ya: cero repetición en el primer cuadro
   chips: ["Sectores público y privado", "Cobertura en el occidente del país"],
   // el CTA principal es el comercial; el recorrido queda como experiencia
-  cta: ["Cotiza tu proyecto", "Servicios y especialidades"],
+  cta: ["Cuentanos tu proyecto", "Servicios y especialidades"],
   ctaGoto: 16, // el CTA principal tiene su propio escenario (COTIZACIÓN)
 };
 
