@@ -145,7 +145,7 @@ function buildSections() {
       <div class="quote-card">
         <div class="kicker">COTIZACIÓN · 16 <small>/ 16</small></div>
         <h2 class="quote-title">Cuéntanos tu proyecto</h2>
-        <p class="quote-lede">Con estos datos armamos una propuesta con alcance, tiempos y costo. Si prefieres, también puedes escribirnos directo por WhatsApp.</p>
+        <p class="quote-lede">Con estos datos armamos una propuesta con alcance, tiempos y costo. Elige cómo quieres dar el primer paso: por WhatsApp o enviando la solicitud aquí.</p>
         <form id="quote-form" novalidate>
           <div class="qf-grid">
             <label class="qf-field"><span>Nombre *</span>
@@ -179,11 +179,11 @@ function buildSections() {
             <textarea name="notas" rows="3" placeholder="Sitio, metros lineales, diámetros, si hay planos o visita pendiente…"></textarea>
           </label>
           <div class="qf-actions">
-            <button class="btn btn-primary btn-wa-continue" type="submit" aria-label="Continuar en WhatsApp">
+            <button class="btn btn-ghost btn-wa-continue" type="button" id="quote-wa" aria-label="Continuar en WhatsApp">
               <span>Continuar en</span>
               <span class="wa-brandmark" aria-hidden="true">${waIcon.replace(/<title>[\s\S]*?<\/title>/i, '')}</span>
             </button>
-            <button class="btn btn-ghost" type="button" id="quote-mail">Enviar por correo</button>
+            <button class="btn btn-primary" type="submit" id="quote-submit">Enviar solicitud</button>
           </div>
           <p class="qf-note">Usamos tus datos solo para cotizar y dar seguimiento a tu proyecto.</p>
           <p class="qf-status" id="quote-status" role="status" aria-live="polite"></p>
@@ -198,16 +198,18 @@ function buildSections() {
 
 const sections = buildSections()
 
-// ---------- formulario de cotización → CRM ----------
-// Mínimo y directo: el envío compone el mensaje y lo entrega por WhatsApp o
-// correo (sin backend). Si defines CRM_ENDPOINT, además se hace POST del JSON
-// para que tu CRM lo registre.
-const CRM_ENDPOINT = ''            // ej. 'https://tu-crm/api/leads'
+// ---------- formulario de cotización: WhatsApp o Discord (vía /api/contact) ----------
+const CONTACT_ENDPOINT = '/api/contact'
 {
   const form = document.getElementById('quote-form')
   if (form) {
     const status = document.getElementById('quote-status')
-    const mail = document.getElementById('quote-mail')
+    const submitBtn = document.getElementById('quote-submit')
+    const waBtn = document.getElementById('quote-wa')
+    const setBusy = (busy) => {
+      if (submitBtn) submitBtn.disabled = busy
+      if (waBtn) waBtn.disabled = busy
+    }
     const read = () => Object.fromEntries([...new FormData(form).entries()].map(([k, v]) => [k, String(v).trim()]))
     const compose = (d) => [
       `Solicitud de cotización — ${BRAND.name}`,
@@ -217,41 +219,64 @@ const CRM_ENDPOINT = ''            // ej. 'https://tu-crm/api/leads'
       `Tipo de proyecto: ${d.tipo}`,
       `Plazo: ${d.plazo}`,
       d.notas ? `Requerimiento: ${d.notas}` : null,
-      'Vía: boss.internetfriends.xyz · cotización',
+      'Vía: bossingenieria.com · cotización',
     ].filter(Boolean).join('\n')
     const fail = (msg, field) => {
       status.className = 'qf-status err'
       status.textContent = msg
-      const el = form.querySelector(`[name="${field}"]`)
+      const el = field ? form.querySelector(`[name="${field}"]`) : null
       if (el) el.focus()
+      return false
     }
-    const send = (via) => {
-      const d = read()
+    const validate = (d) => {
       if (!d.nombre || d.nombre.length < 3) return fail('Necesitamos tu nombre', 'nombre')
       if (!d.tel || d.tel.replace(/\D/g, '').length < 8) return fail('Necesitamos un teléfono o WhatsApp', 'tel')
       if (d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return fail('Revisa el correo: parece incompleto', 'email')
-      const text = compose(d)
-      if (via === 'mail') {
-        location.href = `mailto:${BRAND.email}?subject=${encodeURIComponent(`Cotización — ${d.empresa || d.nombre}`)}&body=${encodeURIComponent(text)}`
-      } else {
-        window.open(`https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
-      }
-      // el CRM es best-effort: nunca bloquea el envío
-      if (CRM_ENDPOINT) {
-        try {
-          fetch(CRM_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...d, origen: 'landing-cotizacion', enviado: new Date().toISOString() }),
-          }).catch(() => {})
-        } catch (e) { /* silencio */ }
-      }
-      status.className = 'qf-status ok'
-      status.textContent = via === 'mail' ? 'Abriendo tu correo…' : 'Abriendo WhatsApp…'
-      setTimeout(() => { status.textContent = 'Listo. Te contactamos en horario hábil.' }, 1200)
+      return true
     }
-    form.addEventListener('submit', (e) => { e.preventDefault(); send('wa') })
-    if (mail) mail.addEventListener('click', () => send('mail'))
+    const openWhatsApp = () => {
+      const d = read()
+      if (!validate(d)) return
+      const text = compose(d)
+      window.open(`https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+      status.className = 'qf-status ok'
+      status.textContent = 'Abriendo WhatsApp…'
+      setTimeout(() => { status.textContent = 'Continúa la conversación en WhatsApp cuando quieras.' }, 1200)
+    }
+    const sendDiscord = async () => {
+      const d = read()
+      if (!validate(d)) return
+
+      setBusy(true)
+      status.className = 'qf-status'
+      status.textContent = 'Enviando solicitud…'
+
+      let registered = false
+      try {
+        const res = await fetch(CONTACT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...d, origen: 'landing-cotizacion' }),
+        })
+        const payload = await res.json().catch(() => ({}))
+        if (!res.ok || !payload.ok) {
+          return fail(payload.error || 'No pudimos registrar tu solicitud. Intenta de nuevo.', payload.field)
+        }
+        registered = true
+      } catch {
+        return fail('Sin conexión al servidor. Revisa tu red e intenta de nuevo.')
+      } finally {
+        setBusy(false)
+      }
+
+      if (!registered) return
+
+      status.className = 'qf-status ok'
+      status.textContent = 'Solicitud enviada. Te contactamos en horario hábil.'
+      form.reset()
+    }
+    if (waBtn) waBtn.addEventListener('click', openWhatsApp)
+    form.addEventListener('submit', (e) => { e.preventDefault(); sendDiscord() })
   }
 }
 const rail = $('#rail')

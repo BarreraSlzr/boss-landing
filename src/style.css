@@ -822,8 +822,17 @@ body.ready #loader {
 .qf-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: 12px;
   margin-top: 22px;
+}
+.qf-actions .btn {
+  min-height: 48px;
+}
+.qf-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  transform: none;
 }
 .qf-note {
   margin-top: 14px;
@@ -2066,14 +2075,15 @@ body.ready #sheet .plan-callout {
     margin-top: 8px;
   }
   .qf-actions {
+    flex-direction: column;
     flex-wrap: nowrap;
     gap: 8px;
     margin-top: 14px;
   }
   .qf-actions .btn {
-    flex: 1 1 0;
-    padding: 12px 8px;
-    font-size: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 13px;
     justify-content: center;
   }
   .qf-note {
