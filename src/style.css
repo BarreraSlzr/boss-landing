@@ -260,53 +260,174 @@ body.ready #loader { opacity: 0; visibility: hidden; }
 /* ---------- riel de estaciones ---------- */
 
 #rail {
+  /*
+   * Referencia = ancho del contenedor de contenido (.inner ≤ 1240), no 100vw crudo.
+   * Por debajo de 1240 escala con el viewport; por encima se estabiliza y solo
+   * el gutter lateral puede ensanchar título/meta.
+   */
+  --rail-pad: min(7vw, 96px);
+  --rail-container: min(100vw, 1240px);
+  --rail-gutter: max(0px, calc((100vw - var(--rail-container)) / 2));
+  --rail-slot: max(
+    calc(var(--rail-container) * 0.16),
+    calc(var(--rail-gutter) + var(--rail-pad) * 0.65 - 8px)
+  );
+
+  --rail-tick-w: clamp(14px, calc(var(--rail-container) * 0.0135), 22px);
+  --rail-tick-w-active: clamp(22px, calc(var(--rail-container) * 0.021), 34px);
+  --rail-gap: clamp(4px, calc(var(--rail-container) * 0.0055), 9px);
+  --rail-tick-h: clamp(3px, calc(var(--rail-container) * 0.0028), 4px);
+  --rail-font: clamp(8px, calc(var(--rail-container) * 0.008), 11px);
+  --rail-meta-gap: clamp(5px, calc(var(--rail-container) * 0.005), 8px);
+  --rail-meta-max: clamp(130px, calc(var(--rail-slot) + 24px), 280px);
+  --rail-title-max: clamp(110px, var(--rail-slot), 240px);
+  --rail-right: clamp(10px, calc(var(--rail-container) * 0.018), 28px);
+  --rail-meta-inset: clamp(8px, calc(var(--rail-container) * 0.007), 12px);
+
   position: fixed;
-  right: clamp(14px, 2.6vw, 30px);
+  right: var(--rail-right);
   top: 50%;
   transform: translateY(-50%);
-  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: var(--rail-gap);
   align-items: flex-end;
+  max-height: min(92vh, 920px);
+  z-index: 30;
+  pointer-events: auto;
 }
 
-#rail button {
-  width: 22px;
-  height: 4px;
+#rail > a {
+  width: var(--rail-tick-w);
+  height: var(--rail-tick-h);
   border: none;
   border-radius: 99px;
   background: rgba(62, 139, 255, 0.22);
   cursor: pointer;
   position: relative;
   transition: background 0.35s, width 0.35s, box-shadow 0.35s;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  flex: none;
+  text-decoration: none;
 }
 
-#rail button:hover { background: rgba(62, 139, 255, 0.5); }
+#rail > a:hover { background: rgba(62, 139, 255, 0.5); }
 
-#rail button.active {
-  width: 34px;
+#rail > a.active {
+  width: var(--rail-tick-w-active);
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(62, 139, 255, 0.26);
+  box-shadow: 0 0 0 clamp(2px, calc(var(--rail-container) * 0.002), 3px) rgba(62, 139, 255, 0.26);
 }
 
-#rail button::after {
-  content: attr(data-label);
+/* meta a la izquierda del tick: título (si aplica) → número / etiqueta fija */
+#rail > a .rail-meta {
   position: absolute;
-  right: 34px;
+  right: calc(var(--rail-tick-w-active) + var(--rail-meta-inset));
   top: 50%;
   transform: translateY(-50%);
-  font-family: var(--font-m);
-  font-size: 9px;
-  letter-spacing: 0.2em;
-  color: var(--dim);
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  width: max-content;
+  max-width: var(--rail-meta-max);
+  height: auto;
   pointer-events: none;
 }
 
-#rail button:hover::after { opacity: 1; }
+#rail > a.active:has(.rail-num) .rail-meta {
+  gap: var(--rail-meta-gap);
+  align-items: flex-start;
+}
+
+#rail > a .rail-title,
+#rail > a .rail-num {
+  font-family: var(--font-m);
+  font-size: var(--rail-font);
+  line-height: 1.25;
+  transition: color 0.25s ease, opacity 0.25s ease;
+}
+
+/* Inicio / Contacto / Cotizar: siempre visibles, una línea, sutiles fuera de etapa */
+#rail > a .rail-title {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 0;
+  color: var(--faint);
+  opacity: 0.72;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* títulos de estación (junto al número): solo en la etapa activa; wrap sin ellipsis */
+#rail > a:has(.rail-num) .rail-title {
+  display: none;
+}
+
+#rail > a.active:has(.rail-num) .rail-title {
+  display: block;
+  opacity: 1;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  height: auto;
+  width: max-content;
+  max-width: var(--rail-title-max);
+  color: var(--ink);
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+/* números: siempre visibles; sutiles fuera de etapa */
+#rail > a .rail-num {
+  flex: none;
+  white-space: nowrap;
+  letter-spacing: 0.14em;
+  color: var(--faint);
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  /* alinea el nº con la primera línea del título multilínea */
+  padding-top: 0.05em;
+}
+
+#rail > a.active .rail-title,
+#rail > a.active .rail-num {
+  color: var(--ink);
+  opacity: 1;
+}
+
+#rail > a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: clamp(2px, calc(var(--rail-container) * 0.002), 3px);
+}
+
+.btn-wa-continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-wa-continue .wa-brandmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.btn-wa-continue .wa-brandmark svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.btn-wa-continue .wa-brandmark path {
+  fill: currentColor;
+}
 
 /* ---------- secciones story ---------- */
 
@@ -971,7 +1092,8 @@ body.touring #scene-dock {
   pointer-events: auto;
 }
 
-#scene-nav button {
+#scene-nav button,
+#scene-nav a {
   font-family: var(--font-m);
   font-size: 9px;
   letter-spacing: 0.14em;
@@ -984,10 +1106,27 @@ body.touring #scene-dock {
   cursor: pointer;
   backdrop-filter: blur(8px);
   transition: border-color 0.2s, color 0.2s, background 0.2s, opacity 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-#scene-nav button:hover {
+#scene-nav button:hover,
+#scene-nav a:hover {
   border-color: rgba(62, 139, 255, 0.6);
+  color: #fff;
+}
+
+#scene-contact {
+  color: #fff;
+  border-color: rgba(62, 139, 255, 0.55);
+  background: rgba(16, 40, 78, 0.92);
+}
+
+#scene-contact:hover {
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1086,11 +1225,27 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
   color: var(--dim);
 }
 
-/* mapa temático — integrado a la placa de contacto */
+/* mapa temático — bloque completo clicable → Google Maps */
+.map-hit {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  border-top: 1px solid rgba(62, 139, 255, 0.16);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.map-hit:hover {
+  border-color: rgba(62, 139, 255, 0.45);
+  background: rgba(62, 139, 255, 0.05);
+}
+
+.map-hit:hover .map-foot { color: var(--blue); }
+
 .map-frame {
   height: clamp(140px, 21vh, 210px);
   background: #0c1c34;
-  border-top: 1px solid rgba(62, 139, 255, 0.16);
+  pointer-events: none;
 }
 
 .map-frame iframe {
@@ -1098,13 +1253,13 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
   height: 100%;
   border: 0;
   display: block;
+  pointer-events: none;
   filter: grayscale(0.15) invert(0.92) hue-rotate(185deg) saturate(1.5) brightness(0.88) contrast(1.04);
 }
 
 .map-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
   padding: 9px 16px;
@@ -1114,23 +1269,8 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--dim);
+  transition: color 0.3s;
 }
-
-.map-chip {
-  margin-left: auto;
-  color: var(--blue);
-  text-decoration: none;
-  white-space: nowrap;
-  border: 1px solid rgba(62, 139, 255, 0.4);
-  border-radius: 99px;
-  padding: 6px 12px;
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  background: rgba(62, 139, 255, 0.08);
-  transition: border-color 0.3s, background 0.3s;
-}
-
-.map-chip:hover { border-color: var(--accent); background: rgba(62, 139, 255, 0.16); }
 
 .sectors {
   display: flex;
@@ -1241,7 +1381,7 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
 /* accesibilidad — foco visible en acciones de contacto */
 .wa-main:focus-visible,
 .wa-mail:focus-visible,
-.map-chip:focus-visible {
+.map-hit:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -1268,10 +1408,13 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
 }
 
 @media (max-width: 640px) {
-  #rail { right: 8px; gap: 7px; }
-  #rail button { width: 12px; }
-  #rail button.active { width: 20px; }
-  #rail button::after { display: none; }
+  #rail {
+    --rail-right: clamp(6px, 2vw, 10px);
+    --rail-gap: clamp(5px, 1.4vw, 7px);
+    --rail-tick-w: clamp(10px, 2.8vw, 12px);
+    --rail-tick-w-active: clamp(16px, 4.5vw, 20px);
+  }
+  #rail > a .rail-meta { display: none; }
   .scroll-hint { display: none; }
   .kicker { letter-spacing: 0.2em; padding-right: 34px; }
   .station-num { top: 16px; right: 16px; font-size: 11px; }
@@ -1371,8 +1514,7 @@ body.touring #tour-stop { display: inline-block; animation: tour-in 0.35s var(--
   .wa-sub { font-size: 10.5px; }
   .wa-go { display: none; }
   .wa-mail { padding: 10px 14px; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .map-foot { position: relative; flex-direction: column; align-items: flex-start; gap: 2px; padding: 9px 12px; font-size: 9px; }
-  .map-chip { position: absolute; top: -42px; right: 10px; margin: 0; font-size: 9px; padding: 6px 11px; background: rgba(10, 24, 48, 0.88); backdrop-filter: blur(8px); }
+  .map-foot { flex-direction: column; align-items: flex-start; gap: 2px; padding: 9px 12px; font-size: 9px; }
   .finale .legal { font-size: 8px; letter-spacing: 0.16em; }
 }
 
