@@ -5,7 +5,7 @@
 
 import './style.css'
 import * as THREE from 'three'
-import { BRAND, TOPICS, HERO, FINALE, CLIENTS, TECH, ZONES } from './data.js'
+import { BRAND, TOPICS, HERO, FINALE, CLIENTS, TECH, ZONES, STATION_SLUGS } from './data.js'
 import waIcon from './assets/whatsapp.svg?raw'
 import { buildWorld } from './world.js'
 
@@ -18,7 +18,9 @@ function buildSections() {
   // hero
   const hero = document.createElement('section')
   hero.className = 'section hero'
+  hero.id = 'inicio'
   hero.dataset.idx = '0'
+  hero.dataset.slug = 'inicio'
   hero.innerHTML = `
     <div class="inner">
       <div class="hero-eyebrow">${HERO.eyebrow}</div>
@@ -27,7 +29,7 @@ function buildSections() {
       <p class="hero-sub hero-sub-mobile">${HERO.subMobile}</p>
       <div class="hero-chips">${HERO.chips.map((c) => `<span>${c}</span>`).join('')}</div>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href="#" data-goto="${HERO.ctaGoto}">${HERO.cta[0]}</a>
+        <a class="btn btn-primary" href="#${STATION_SLUGS[HERO.ctaGoto]}" data-goto="${HERO.ctaGoto}">${HERO.cta[0]}</a>
         <button class="btn btn-ghost" type="button" id="tour-btn">${HERO.cta[1]}</button>
       </div>
     </div>
@@ -39,7 +41,9 @@ function buildSections() {
   TOPICS.forEach((tp, i) => {
     const sec = document.createElement('section')
     sec.className = `section ${i % 2 === 0 ? 'align-left' : 'align-right'}`
+    sec.id = tp.slug
     sec.dataset.idx = String(i + 1)
+    sec.dataset.slug = tp.slug
     sec.style.setProperty('--accent', tp.accent)
     sec.innerHTML = `
       <div class="inner">
@@ -94,7 +98,9 @@ function buildSections() {
 
   const fin = document.createElement('section')
   fin.className = 'section finale'
+  fin.id = 'contacto'
   fin.dataset.idx = '15'
+  fin.dataset.slug = 'contacto'
   fin.innerHTML = `
     <div class="inner">
       <div class="kicker">${FINALE.kicker}</div>
@@ -111,18 +117,19 @@ function buildSections() {
           <span class="wa-go">Abrir chat ↗</span>
         </a>
         <a class="wa-mail" href="${mailtoHref()}"><span>o escríbenos por correo</span><strong>${BRAND.email}</strong></a>
-        <div class="map-frame"><iframe src="${mapEmbed}" title="Mapa — ${BRAND.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
-        <div class="map-foot">
-          <span>${BRAND.address}<br>${BRAND.legal}</span>
-          <a class="map-chip" href="${mapLink}" target="_blank" rel="noopener">Abrir en Google Maps ↗</a>
-        </div>
+        <a class="map-hit" href="${mapLink}" target="_blank" rel="noopener" aria-label="Abrir ubicación en Google Maps">
+          <div class="map-frame"><iframe src="${mapEmbed}" title="Mapa — ${BRAND.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" tabindex="-1"></iframe></div>
+          <div class="map-foot">
+            <span>${BRAND.address}<br>${BRAND.legal}</span>
+          </div>
+        </a>
       </div>
       <div class="sectors">${BRAND.sectors.map((s) => `<span>${s}</span>`).join('')}</div>
       <div class="clients-plate">
         <div class="plate-head">Confían en nosotros</div>
         <div class="logo-belt"><div class="logo-track">${belt}${belt}</div></div>
       </div>
-      <div class="legal">© ${new Date().getFullYear()} ${BRAND.name} · <a href="#" data-goto="0">↑ inicio</a></div>
+      <div class="legal">© ${new Date().getFullYear()} ${BRAND.name} · <a href="#inicio" data-goto="0">↑ inicio</a></div>
     </div>
   `
   root.appendChild(fin)
@@ -130,7 +137,9 @@ function buildSections() {
   // ---------- escenario 16 · COTIZACIÓN (formulario mínimo → CRM) ----------
   const quote = document.createElement('section')
   quote.className = 'section align-left quote-section'
+  quote.id = 'cotizar'
   quote.dataset.idx = '16'
+  quote.dataset.slug = 'cotizar'
   quote.innerHTML = `
     <div class="inner">
       <div class="quote-card">
@@ -170,7 +179,10 @@ function buildSections() {
             <textarea name="notas" rows="3" placeholder="Sitio, metros lineales, diámetros, si hay planos o visita pendiente…"></textarea>
           </label>
           <div class="qf-actions">
-            <button class="btn btn-primary" type="submit">Enviar por WhatsApp</button>
+            <button class="btn btn-primary btn-wa-continue" type="submit" aria-label="Continuar en WhatsApp">
+              <span>Continuar en</span>
+              <span class="wa-brandmark" aria-hidden="true">${waIcon.replace(/<title>[\s\S]*?<\/title>/i, '')}</span>
+            </button>
             <button class="btn btn-ghost" type="button" id="quote-mail">Enviar por correo</button>
           </div>
           <p class="qf-note">Usamos tus datos solo para cotizar y dar seguimiento a tu proyecto.</p>
@@ -244,16 +256,88 @@ const CRM_ENDPOINT = ''            // ej. 'https://tu-crm/api/leads'
 }
 const rail = $('#rail')
 const railButtons = []
-const LABELS = ['INICIO', ...TOPICS.map((t) => t.id), 'CONTACTO', 'COTIZACIÓN']
+// cola del rail: título delante del nº (título solo en etapa activa);
+// Inicio / Contacto / Cotizar y los números quedan siempre visibles (sutiles si inactivos)
+const RAIL_STEPS = [
+  { label: 'Inicio', num: null },
+  ...TOPICS.map((t) => ({ label: t.title, num: t.id })),
+  { label: 'Contacto', num: null },
+  { label: 'Cotizar', num: null },
+]
+
+// ---------- deeplinks: ?s=slug y #slug equivalen ----------
+const normalizeSlug = (raw) => String(raw || '').trim().toLowerCase().replace(/^#/, '')
+const slugToIndex = (slug) => {
+  const i = STATION_SLUGS.indexOf(normalizeSlug(slug))
+  return i >= 0 ? i : -1
+}
+const indexToSlug = (idx) => STATION_SLUGS[idx] || 'inicio'
+const currentUrlSlug = () => {
+  const s = normalizeSlug(new URLSearchParams(location.search).get('s'))
+  if (s) return s
+  return normalizeSlug(location.hash)
+}
+/** Escribe ?s= y #slug alineados. push = clic / teclado; replace = scroll. */
+function syncUrl(idx, { push = false } = {}) {
+  const slug = indexToSlug(idx)
+  if (!push && currentUrlSlug() === slug) {
+    const params = new URLSearchParams(location.search)
+    if (params.get('s') === slug && normalizeSlug(location.hash) === slug) return
+  }
+  const url = new URL(location.href)
+  url.searchParams.set('s', slug)
+  url.searchParams.delete('p')
+  const next = `${url.pathname}${url.search}#${slug}`
+  if (push) history.pushState({ idx, slug }, '', next)
+  else history.replaceState({ idx, slug }, '', next)
+}
+function resolveDeeplinkIndex() {
+  const params = new URLSearchParams(location.search)
+  const sRaw = params.get('s')
+  if (sRaw != null && String(sRaw).trim() !== '') {
+    const fromS = slugToIndex(sRaw)
+    return fromS >= 0 ? fromS : 0
+  }
+  const hashRaw = normalizeSlug(location.hash)
+  if (hashRaw) {
+    const fromHash = slugToIndex(hashRaw)
+    return fromHash >= 0 ? fromHash : 0
+  }
+  // legado ?p=0..1 → estación más cercana
+  const pRaw = params.get('p')
+  if (pRaw != null) {
+    const v = parseFloat(pRaw)
+    if (Number.isFinite(v) && v >= 0 && v <= 1) {
+      return Math.min(sections.length - 1, Math.max(0, Math.round(v * 15)))
+    }
+  }
+  return null
+}
+let applyingHistory = false
+let urlBootstrapped = false
+
 sections.forEach((sec, idx) => {
-  const b = document.createElement('button')
-  b.dataset.label = LABELS[idx]
-  b.setAttribute('aria-label', LABELS[idx])
-  b.addEventListener('click', () => {
-    cancelTour()
-    if (Math.abs(idx - activeIdx) > 1) flyTo(idx)
-    else gotoSection(idx)
-  })
+  const step = RAIL_STEPS[idx]
+  const slug = indexToSlug(idx)
+  const b = document.createElement('a')
+  b.href = `#${slug}`
+  b.dataset.goto = String(idx)
+  const aria = step.num ? `${step.label} ${step.num}` : step.label
+  b.setAttribute('aria-label', aria)
+  const meta = document.createElement('span')
+  meta.className = 'rail-meta'
+  meta.setAttribute('aria-hidden', 'true')
+  const titleEl = document.createElement('span')
+  titleEl.className = 'rail-title'
+  titleEl.textContent = step.label
+  meta.appendChild(titleEl)
+  if (step.num) {
+    const numEl = document.createElement('span')
+    numEl.className = 'rail-num'
+    numEl.textContent = step.num
+    meta.appendChild(numEl)
+  }
+  b.appendChild(meta)
   rail.appendChild(b)
   railButtons.push(b)
 })
@@ -261,6 +345,7 @@ sections.forEach((sec, idx) => {
 // dock inferior: prev/next entre escenarios + Detener (móvil)
 const SCENE_FIRST = 1
 const SCENE_LAST = TOPICS.length // 14 — antes de contacto
+const CONTACTO_IDX = SCENE_LAST + 1 // 15
 const sceneDock = document.createElement('div')
 sceneDock.id = 'scene-dock'
 const sceneNav = document.createElement('nav')
@@ -271,6 +356,12 @@ scenePrev.type = 'button'
 scenePrev.id = 'scene-prev'
 scenePrev.setAttribute('aria-label', 'Escenario anterior')
 scenePrev.textContent = '← Anterior'
+const sceneContact = document.createElement('a')
+sceneContact.href = '#contacto'
+sceneContact.id = 'scene-contact'
+sceneContact.dataset.goto = String(CONTACTO_IDX)
+sceneContact.setAttribute('aria-label', 'Ir a Contacto')
+sceneContact.textContent = 'Contacto'
 const sceneNext = document.createElement('button')
 sceneNext.type = 'button'
 sceneNext.id = 'scene-next'
@@ -279,13 +370,11 @@ sceneNext.textContent = 'Siguiente →'
 const jumpScene = (dir) => {
   const target = Math.min(SCENE_LAST, Math.max(SCENE_FIRST, activeIdx + dir))
   if (target === activeIdx) return
-  cancelTour()
-  if (Math.abs(target - activeIdx) > 1) flyTo(target)
-  else gotoSection(target)
+  goToStation(target, { historyMode: 'push' })
 }
 scenePrev.addEventListener('click', () => jumpScene(-1))
 sceneNext.addEventListener('click', () => jumpScene(1))
-sceneNav.append(scenePrev, sceneNext)
+sceneNav.append(scenePrev, sceneContact, sceneNext)
 sceneDock.appendChild(sceneNav)
 document.body.appendChild(sceneDock)
 
@@ -405,6 +494,7 @@ function updateActive() {
     sections.forEach((s, i) => s.classList.toggle('active', i === idx))
     railButtons.forEach((b, i) => b.classList.toggle('active', i === idx))
     syncSceneDock(idx)
+    if (urlBootstrapped && !applyingHistory) syncUrl(idx, { push: false })
   }
 }
 
@@ -423,7 +513,6 @@ function flyTo(idx) {
   const dist = Math.abs(idx - activeIdx)
   if (dist <= 1 || reduced) { gotoSection(idx, true); return }
   cancelTour()
-  const h = sectionH()
   flight.on = true
   flight.fromP = p
   flight.toP = idx / 15                       // misma escala que el scroll
@@ -438,13 +527,31 @@ function endFlight() {
   document.documentElement.style.scrollSnapType = ''
 }
 
+/** Navegación unificada: rail, nav, dock, teclado y deeplinks. */
+function goToStation(idx, { historyMode = 'push', instant = false } = {}) {
+  const target = Math.min(sections.length - 1, Math.max(0, Number(idx) || 0))
+  cancelTour()
+  if (historyMode === 'push') syncUrl(target, { push: true })
+  else if (historyMode === 'replace') syncUrl(target, { push: false })
+  if (Math.abs(target - activeIdx) > 1) flyTo(target)
+  else gotoSection(target, instant)
+}
+
+function applyHistoryStation(idx) {
+  applyingHistory = true
+  cancelTour()
+  endFlight()
+  const target = Math.min(sections.length - 1, Math.max(0, Number(idx) || 0))
+  gotoSection(target, true)
+  p = targetP = target / 15
+  updateActive()
+  requestAnimationFrame(() => { applyingHistory = false })
+}
+
 document.querySelectorAll('[data-goto]').forEach((a) => {
   a.addEventListener('click', (e) => {
     e.preventDefault()
-    cancelTour()
-    const idx = Number(a.dataset.goto)
-    if (Math.abs(idx - activeIdx) > 1) flyTo(idx)
-    else gotoSection(idx)
+    goToStation(Number(a.dataset.goto), { historyMode: 'push' })
   })
 })
 
@@ -584,8 +691,7 @@ addEventListener('keydown', (e) => {
   hideKbdHint()
   const last = sections.length - 1
   const tgt = nav === -999 ? 0 : nav === 999 ? last : Math.max(0, Math.min(last, activeIdx + nav))
-  if (Math.abs(tgt - activeIdx) > 1) flyTo(tgt)
-  else gotoSection(tgt, true)
+  goToStation(tgt, { historyMode: 'push', instant: true })
 })
 
 // si el usuario hace scroll, el vuelo se corta y él manda (el teclado ya
@@ -602,16 +708,40 @@ addEventListener('resize', () => {
   readScroll()
 })
 
-// deep-link ?p=
+// deeplink ?s=slug | #slug (legado ?p=0..1)
 {
-  const q = new URLSearchParams(location.search).get('p')
-  if (q) {
-    const v = parseFloat(q)
-    if (Number.isFinite(v) && v > 0 && v <= 1) requestAnimationFrame(() => scrollTo(0, v * maxScroll()))
+  const deeplinkIdx = resolveDeeplinkIndex()
+  if (deeplinkIdx != null && deeplinkIdx > 0) {
+    scrollTo(0, 0)
+    requestAnimationFrame(() => {
+      gotoSection(deeplinkIdx, true)
+      p = targetP = deeplinkIdx / 15
+      syncUrl(deeplinkIdx, { push: false })
+      updateActive()
+      urlBootstrapped = true
+    })
   } else {
     scrollTo(0, 0)
+    syncUrl(0, { push: false })
+    urlBootstrapped = true
   }
 }
+
+addEventListener('popstate', (e) => {
+  const fromState = e.state && Number.isFinite(e.state.idx) ? e.state.idx : resolveDeeplinkIndex()
+  applyHistoryStation(fromState == null ? 0 : fromState)
+})
+
+addEventListener('hashchange', () => {
+  if (applyingHistory) return
+  const idx = slugToIndex(location.hash)
+  if (idx < 0) return
+  if (idx === activeIdx) {
+    syncUrl(idx, { push: false })
+    return
+  }
+  applyHistoryStation(idx)
+})
 
 // ---------- bucle ----------
 const camPos = new THREE.Vector3()
